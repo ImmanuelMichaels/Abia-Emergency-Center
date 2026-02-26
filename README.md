@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
@@ -14,3 +15,7 @@ The React Compiler is not enabled on this template because of its impact on dev 
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+=======
+# Abia-State-Emergency-Center
+The Abia State Emergency App — often referred to as the Abia Safety Alert System or Homeland Community Security Alert System — is a mobile application and digital safety platform designed for residents of Abia State, Nigeria to report emergencies and improve community security. 
+>>>>>>> 823896b7264ffa64e657ebdef255018116895afc
