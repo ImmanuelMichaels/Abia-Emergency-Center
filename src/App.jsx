@@ -1,6 +1,7 @@
 import { useState } from "react";
 import SplashScreen from "./components/SplashScreen.jsx";
 import AbiaStateEmergencyApp from "./components/AbiaStateEmergencyApp.jsx";
+import Nnwanne from "./components/Nnwanne";
 import InstallPrompt from "./components/InstallPrompt.jsx";
 
 export default function App() {
@@ -21,6 +22,7 @@ export default function App() {
       }}>
         <AbiaStateEmergencyApp />
       </div>
+      <Nnwanne />
 
       {/* PWA Install Prompt — appears after splash is done */}
       <InstallPrompt />
