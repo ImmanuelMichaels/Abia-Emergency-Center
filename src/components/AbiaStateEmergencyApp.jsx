@@ -1262,11 +1262,12 @@ export default function AbiaEmergencyApp() {
         </div>
 
         <div className="footer">
-          Abia State Emergency Contacts · 17 LGAs · 12 Agencies ·
+          {/* Abia State Emergency Contacts · 17 LGAs · 12 Agencies ·
           Emergency: <strong style={{color:"#f44336"}}>112</strong> ·
           NAPTIP: <strong style={{color:"#a78bfa"}}>0803-9000-001</strong> ·
           Legal Aid: <strong style={{color:"#f59e0b"}}>0703-000-0000</strong> ·
-          NHRC Abia: <strong style={{color:"#f59e0b"}}>+2348035403780</strong>
+          NHRC Abia: <strong style={{color:"#f59e0b"}}>+2348035403780</strong> */}
+          © 2026 Abia State Emergency App created by Arvenue · Data sourced from official government contacts and public records. For corrections or updates, please contact us.
         </div>
       </div>
     </>
