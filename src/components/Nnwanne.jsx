@@ -574,7 +574,7 @@ export default function Nnwanne() {
     const ENDPOINT = IS_DEV
       ? "http://localhost:3001/api/chat"
       : "https://abia-emergency-center-production.up.railway.app/api/chat";
-          const headers = { "Content-Type": "application/json" };
+          const headers = IS_DEV
             ? { "Content-Type": "application/json" }
             : { "Content-Type": "application/json" };
 
