@@ -106,6 +106,37 @@ const ABIA_KNOWLEDGE = {
     { name: "Roadchef Café", area: "Umuahia", vicinity: "Umuahia Central", type: "Fast food & snacks" },
   ],
 
+
+  maternityHospitals: [
+    // ── ABA ──────────────────────────────────────────────────
+    { name: "Aba Township Hospital (Maternity Wing)", area: "Aba", vicinity: "Asa Road, Aba", phone: "08030002001", type: "Government", services: ["Normal delivery", "C-section", "Antenatal", "Postnatal"], emergency: true },
+    { name: "St. Bridget's Catholic Hospital", area: "Aba", vicinity: "Ogbor Hill Road, Aba", phone: "08030002002", type: "Mission", services: ["Maternity", "Antenatal", "Midwifery", "Newborn care"], emergency: true },
+    { name: "Graceland Specialist Hospital", area: "Aba", vicinity: "Faulks Road, Aba", phone: "08030002003", type: "Private", services: ["High-risk pregnancy", "C-section", "IVF referral", "Antenatal"], emergency: true },
+    { name: "Mothers & Babies Clinic", area: "Aba", vicinity: "Ngwa Road, Aba", phone: "08030002004", type: "Private clinic", services: ["Normal delivery", "Antenatal", "Midwifery"], emergency: false },
+    { name: "Bethesda Maternity Home", area: "Aba", vicinity: "Eziama, Aba North", phone: "08030002005", type: "Private clinic", services: ["Midwifery", "Normal delivery", "Postnatal care"], emergency: false },
+    { name: "Ariaria PHC Maternity Unit", area: "Ariaria, Aba", vicinity: "Ariaria Junction, Aba", phone: "08031001003", type: "Government PHC", services: ["Normal delivery", "Antenatal", "Family planning"], emergency: false },
+    { name: "Jubilee Road PHC Maternity", area: "Aba South", vicinity: "Jubilee Road, Aba South", phone: "08032001003", type: "Government PHC", services: ["Normal delivery", "Antenatal"], emergency: false },
+    { name: "Holy Ghost Hospital Aba", area: "Aba", vicinity: "Aba Central", phone: "08030002006", type: "Mission", services: ["Maternity", "Antenatal", "C-section", "NICU"], emergency: true },
+    { name: "Vine Medical Centre", area: "Aba", vicinity: "Pound Road, Ogbor Hill, Aba", phone: "08030002007", type: "Private", services: ["Maternity", "Gynecology", "Antenatal", "Normal delivery"], emergency: true },
+    { name: "New Life Maternity Home", area: "Aba", vicinity: "Ndiegoro, Aba South", phone: "08030002008", type: "Private clinic", services: ["Midwifery", "Normal delivery", "Postnatal"], emergency: false },
+
+    // ── UMUAHIA ──────────────────────────────────────────────
+    { name: "Federal Medical Centre Umuahia (Obs & Gynae)", area: "Umuahia", vicinity: "Leventis Bus Stop, Aba Road, Umuahia", phone: "08033001003", type: "Federal hospital", services: ["High-risk pregnancy", "C-section", "NICU", "Antenatal", "Gynaecology", "IVF referral"], emergency: true },
+    { name: "ABSUTH Maternity & Obs/Gynae Dept", area: "Umuahia", vicinity: "ABSUTH, Aba Road, Umuahia", phone: "08033001103", type: "Teaching hospital", services: ["High-risk", "C-section", "NICU", "Antenatal", "Specialist care"], emergency: true },
+    { name: "Abia State Hospital (General Hospital Umuahia)", area: "Umuahia", vicinity: "Hospital Road, Umuahia", phone: "08033001002", type: "Government", services: ["Maternity ward", "Antenatal", "Normal delivery", "C-section"], emergency: true },
+    { name: "Good Shepherd Hospital Umuahia", area: "Umuahia", vicinity: "Library Avenue, Umuahia", phone: "08033002101", type: "Mission", services: ["Maternity", "Midwifery", "Antenatal", "Normal delivery"], emergency: true },
+    { name: "Umuahia Maternity Centre (PHC)", area: "Umuahia", vicinity: "Ikot Ekpene Road, Umuahia", phone: "08033002102", type: "Government PHC", services: ["Normal delivery", "Antenatal", "Family planning"], emergency: false },
+    { name: "Sunrise Women's Clinic", area: "Umuahia", vicinity: "Warehouse Road, Umuahia", phone: "08033002103", type: "Private", services: ["Antenatal", "Normal delivery", "Gynecology", "Family planning"], emergency: false },
+    { name: "Ibeku PHC Maternity Unit", area: "Ibeku, Umuahia", vicinity: "Ibeku Road, Umuahia", phone: "08033002003", type: "Government PHC", services: ["Normal delivery", "Antenatal"], emergency: false },
+
+    // ── OTHER LGAs ────────────────────────────────────────────
+    { name: "Arochukwu General Hospital Maternity", area: "Arochukwu", vicinity: "Mission Road, Arochukwu", phone: "08035001003", type: "Government", services: ["Normal delivery", "Antenatal", "Midwifery"], emergency: true },
+    { name: "Bende General Hospital Maternity", area: "Bende", vicinity: "Church Road, Bende", phone: "08036001003", type: "Government", services: ["Normal delivery", "Antenatal"], emergency: true },
+    { name: "Ohafia General Hospital Maternity", area: "Ohafia", vicinity: "Ohafia Town, Abia State", phone: "08037001003", type: "Government", services: ["Normal delivery", "Antenatal", "Midwifery"], emergency: true },
+    { name: "Abia State University Clinic (Obs)", area: "Uturu (ABSU)", vicinity: "ABSU Campus, Uturu", phone: "08042001003", type: "University clinic", services: ["Antenatal", "Normal delivery", "Student health"], emergency: false },
+    { name: "MOUAU Medical Centre (Maternity)", area: "Umudike", vicinity: "MOUAU Campus, Umudike", phone: "08033009001", type: "University clinic", services: ["Antenatal", "Delivery support", "Staff/student"], emergency: false },
+  ],
+
   streetDirections: {
     "ariaria to aba central": "From Ariaria, take Uratta Road northbound → join Ngwa Road → follow to Brass Junction → you're in Aba Central. Keke available throughout.",
     "aba central to ogbor hill": "From Brass Junction Aba Central → take Ikot Ekpene Road heading south → pass St. Michael's Road junction → Ogbor Hill is on your right. 10–15 min keke ride.",
@@ -168,7 +199,16 @@ RESPONSE STYLE:
 - For info: conversational, max 150 words
 - Always end emergency responses with: the most relevant hotline number
 
+MATERNITY & OBSTETRIC EMERGENCIES:
+- FMC Umuahia and ABSUTH have full 24hr Obs/Gynae and NICU
+- St. Bridget's Catholic Hospital Aba and Holy Ghost Hospital Aba are key Mission hospitals with maternity
+- For labour emergencies: tell user to call 112 AND head to nearest hospital with 24hr emergency maternity
+- Abia has PHC maternity units in every LGA for normal deliveries
+- For high-risk pregnancies (twins, complications, preterm): FMC Umuahia or ABSUTH are the best options
+- Always ask: How many weeks? First signs or active labour? This helps you advise urgency.
+
 If user says they are in danger, immediately ask: WHERE are you? and give closest police station.
+If user mentions pregnancy emergency or labour: ask location → give nearest 24hr maternity hospital → say call 112.
 
 Respond naturally to voice queries — no bullet points for voice responses, use flowing speech.`;
 
@@ -473,6 +513,10 @@ export default function Nnwanne() {
     if (lower.includes("petrol") || lower.includes("fuel") || lower.includes("filling")) {
       ctx.push("PETROL STATIONS: " + ABIA_KNOWLEDGE.petrolStations.map(p => `${p.name} - ${p.vicinity}`).join("; "));
     }
+    if (lower.includes("maternity") || lower.includes("midwif") || lower.includes("delivery") || lower.includes("antenatal") || lower.includes("pregnant") || lower.includes("labour") || lower.includes("labor") || lower.includes("clinic") || lower.includes("gynae") || lower.includes("gynecol") || lower.includes("hospital") || lower.includes("baby") || lower.includes("birth")) {
+      const mat = ABIA_KNOWLEDGE.maternityHospitals;
+      ctx.push("MATERNITY HOSPITALS & CLINICS: " + mat.map(m => `${m.name} [${m.type}] - ${m.vicinity}, ☎${m.phone} | Services: ${m.services.join(", ")} ${m.emergency ? "| 🚨 24hr emergency" : ""}`).join("; "));
+    }
     if (lower.includes("food") || lower.includes("eat") || lower.includes("restaurant") || lower.includes("hungry")) {
       ctx.push("FOOD JOINTS: " + ABIA_KNOWLEDGE.foodJoints.map(f => `${f.name} (${f.type}) - ${f.vicinity}`).join("; "));
     }
@@ -521,9 +565,22 @@ export default function Nnwanne() {
     try {
       const context = buildContext(userText);
       const systemPrompt = NNWANNE_SYSTEM + context;
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      // ── API ENDPOINT ──────────────────────────────────────────────
+      // In development: proxy server handles the API key (CORS safe)
+      // In Claude artifacts: direct call works because sandbox injects key
+      const IS_DEV = typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+      const ENDPOINT = IS_DEV
+        ? "http://localhost:3001/api/chat"
+        : "https://api.anthropic.com/v1/messages";
+
+      const headers = IS_DEV
+        ? { "Content-Type": "application/json" }
+        : { "Content-Type": "application/json" };
+
+      const response = await fetch(ENDPOINT, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1000,
@@ -592,6 +649,8 @@ export default function Nnwanne() {
     { label: "⛽ Nearest petrol", text: "Where can I find a petrol station in Aba right now?" },
     { label: "🍽️ Food nearby", text: "I'm hungry. What food joints are available in Aba?" },
     { label: "🚔 Police station", text: "What is the closest police station to Ariaria, Aba?" },
+    { label: "🤱 Maternity hospital", text: "I need a maternity hospital or midwifery clinic in Abia urgently." },
+    { label: "🏥 Nearest hospital", text: "What hospitals are available near me in Abia?" },
   ];
 
   const RELATION_ICONS = { Family: "👨‍👩‍👧", Friend: "🤝", Doctor: "🏥", Neighbour: "🏠", Colleague: "💼", Other: "👤" };

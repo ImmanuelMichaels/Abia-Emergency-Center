@@ -126,6 +126,35 @@ function legal(branch, officer, officeAddress, phone) {
   };
 }
 
+
+// ── MATERNITY BUILDER ─────────────────────────────
+function maternity(name,officer,phone,address,facilityType,services,emergency24hr=false){
+  return { station:name, officer, phone, address, facilityType, services, emergency24hr };
+}
+// ── GOVT HEALTH BUILDER ───────────────────────────
+function govHealth(name,officer,phone,address,services){
+  return { station:name, officer, phone, address, services };
+}
+
+// ── SHARED MATERNITY CONSTANTS ────────────────────
+const MAT_HOLY_GHOST  = maternity("Holy Ghost Hospital Aba","Dr. Adaeze Nwosu (HOD Obs/Gynae)","08030002006","Aba Central","Mission",["Normal delivery","C-section","Antenatal","NICU","Gynaecology"],true);
+const MAT_ST_BRIDGET  = maternity("St. Bridget's Catholic Hospital","Dr. Ngozi Okafor (Maternity Head)","08030002002","Ogbor Hill Road, Aba","Mission",["Normal delivery","C-section","Antenatal","Postnatal","Newborn care"],true);
+const MAT_GRACELAND   = maternity("Graceland Specialist Hospital","Dr. Uche Eze (Consultant Obs/Gynae)","08030002003","Faulks Road, Aba","Private",["High-risk pregnancy","C-section","IVF referral","Antenatal","Gynaecology"],true);
+const MAT_VINE        = maternity("Vine Medical Centre","Dr. Obioma Ike (Gynaecologist)","08030002007","Pound Road, Ogbor Hill, Aba","Private",["Maternity","Gynaecology","Antenatal","Normal delivery"],true);
+const MAT_NEW_LIFE    = maternity("New Life Maternity Home","Mw. Chioma Orji (Senior Midwife)","08030002008","Ndiegoro, Aba South","Private Clinic",["Midwifery","Normal delivery","Postnatal care","Newborn check"],false);
+const MAT_FMC         = maternity("FMC Umuahia – Obs & Gynaecology","Dr. Emeka Nwofor (HOD, Obs/Gynae)","08033001003","Leventis Bus Stop, Aba Road, Umuahia","Federal",["High-risk pregnancy","C-section","NICU","Antenatal","Gynaecology","IVF referral"],true);
+const MAT_ABSUTH      = maternity("ABSUTH – Obstetrics & Gynaecology","Dr. Chinyere Kalu (Senior Consultant)","08033001103","ABSUTH, Aba Road, Umuahia","Teaching Hospital",["High-risk","C-section","NICU","Antenatal","Specialist care"],true);
+const MAT_GOOD_SHEP   = maternity("Good Shepherd Hospital Umuahia","Dr. Benedict Orji (Medical Director)","08033002101","Library Avenue, Umuahia","Mission",["Maternity","Midwifery","Antenatal","Normal delivery"],true);
+const MAT_SUNRISE     = maternity("Sunrise Women's Clinic","Dr. Adaeze Obi (Gynaecologist)","08033002103","Warehouse Road, Umuahia","Private",["Antenatal","Normal delivery","Gynaecology","Family planning"],false);
+
+// ── SHARED GOVT HEALTH CENTRE CONSTANTS ──────────
+const GHC_ARIARIA     = govHealth("Ariaria PHC","Dr. Ifeoma Eze (OIC)","08031001003","Ariaria Junction, Aba",["OPD","Antenatal (ANC)","Immunisation","Family planning","Malaria treatment","TB screening"]);
+const GHC_EZIAMA      = govHealth("Eziama Govt Clinic","Dr. Amara Kalu (OIC)","08031002003","Obohia Road, Eziama, Aba North",["OPD","Basic maternal care","Immunisation","Family planning","HIV counselling"]);
+const GHC_JUBILEE     = govHealth("Jubilee Road PHC","Dr. Stella Eke (OIC)","08032001003","Jubilee Road, Aba South",["OPD","Antenatal","Child welfare clinic","Immunisation","Family planning"]);
+const GHC_POUND       = govHealth("Pound Road PHC","Dr. Oluchi Amara (OIC)","08032002003","Pound Road, Ogbor Hill, Aba",["OPD","Antenatal","Immunisation","HIV/AIDS counselling","Malaria treatment"]);
+const GHC_UMU_CENTRAL = govHealth("Umuahia Central PHC","Dr. Amara Nwosu (OIC)","08033001009","Leventis Bus Stop, Umuahia",["OPD","ANC","Immunisation","TB/HIV screening","Child welfare","Family planning"]);
+const GHC_IBEKU       = govHealth("Ibeku PHC","Dr. Adanna Eze (OIC)","08033002009","Ibeku Road, Umuahia",["OPD","Antenatal","Immunisation","Child welfare clinic","Basic surgery referral"]);
+
 // Shared entries for Aba cluster
 const NAPTIP_ABA   = naptip("Aba");
 const LEGAL_ABA    = legal("Aba",     "Barr. Kelechi Obi (Duty Lawyer)",    "Legal Aid Council, Faulks Road, Aba",           "08050001001");
@@ -150,7 +179,9 @@ const ABIA_LGAS = [
         immigration: {station:"NIS Aba Office",                officer:"SC Kelechi Orji",         phone:"08031001009",address:"NIS Office, Aba"},
         ndlea:       {station:"NDLEA Aba Unit",                officer:"SC Chinyere Dike",        phone:"08031001010",address:"Ngwa Road, Aba"},
         naptip:      NAPTIP_ABA,
-        legalAid:    LEGAL_ABA,
+                maternity:   MAT_HOLY_GHOST,
+        govHealth:   GHC_ARIARIA,
+legalAid:    LEGAL_ABA,
     }},
     { name:"Eziama",
       streets:["Eziama Road","Obohia Road","Factory Road","Market Square"],
@@ -166,7 +197,9 @@ const ABIA_LGAS = [
         immigration: {station:"NIS Aba Annex",                 officer:"SC Adaeze Ihejirika",     phone:"08031002009",address:"Obohia Road, Aba"},
         ndlea:       {station:"NDLEA Aba Post",                officer:"SC Obinna Orji",          phone:"08031002010",address:"NDLEA Post, Aba"},
         naptip:      NAPTIP_ABA,
-        legalAid:    LEGAL_ABA,
+                maternity:   MAT_NEW_LIFE,
+        govHealth:   GHC_EZIAMA,
+legalAid:    LEGAL_ABA,
     }},
   ]},
 
@@ -186,7 +219,9 @@ const ABIA_LGAS = [
         immigration: {station:"NIS Aba South",                 officer:"SC Chidinma Orjih",       phone:"08032001009",address:"Asa Road, Aba"},
         ndlea:       {station:"NDLEA Aba South",               officer:"SC Obasi Nwosu",          phone:"08032001010",address:"Ndiegoro, Aba South"},
         naptip:      NAPTIP_ABA,
-        legalAid:    LEGAL_ABA,
+                maternity:   MAT_ST_BRIDGET,
+        govHealth:   GHC_JUBILEE,
+legalAid:    LEGAL_ABA,
     }},
     { name:"Ogbor Hill",
       streets:["Ogbor Hill Road","Ikot Ekpene Road","Pound Road","St. Michael's Road"],
@@ -202,7 +237,9 @@ const ABIA_LGAS = [
         immigration: {station:"NIS Aba Ogbor",                 officer:"SC Chioma Iheaka",        phone:"08032002009",address:"St. Michael's Rd, Aba"},
         ndlea:       {station:"NDLEA Ogbor Unit",              officer:"SC Okey Nwofor",          phone:"08032002010",address:"Ogbor Hill, Aba"},
         naptip:      NAPTIP_ABA,
-        legalAid:    LEGAL_ABA,
+                maternity:   MAT_VINE,
+        govHealth:   GHC_POUND,
+legalAid:    LEGAL_ABA,
     }},
   ]},
 
@@ -222,7 +259,9 @@ const ABIA_LGAS = [
         immigration: {station:"NIS Umuahia HQ",                 officer:"SC Adanna Mbachu",         phone:"08033001009",address:"NIS Office, Umuahia"},
         ndlea:       {station:"NDLEA Umuahia Unit",             officer:"SC Chinwe Opara",          phone:"08033001010",address:"Bende Road, Umuahia"},
         naptip:      NAPTIP_UMU,
-        legalAid:    LEGAL_UMU,
+                maternity:   MAT_FMC,
+        govHealth:   GHC_UMU_CENTRAL,
+legalAid:    LEGAL_UMU,
     }},
     { name:"Ibeku",
       streets:["Ibeku Road","Ndi Ibeku","Uzuakoli Road","Old Umuahia Road"],
@@ -238,7 +277,9 @@ const ABIA_LGAS = [
         immigration: {station:"NIS Ibeku Post",                officer:"SC Oby Ikenna",            phone:"08033002009",address:"Ibeku, Umuahia North"},
         ndlea:       {station:"NDLEA Ibeku Post",              officer:"SC Ikenna Oha",            phone:"08033002010",address:"Uzuakoli Road, Ibeku"},
         naptip:      NAPTIP_UMU,
-        legalAid:    LEGAL_UMU,
+                maternity:   MAT_ABSUTH,
+        govHealth:   GHC_IBEKU,
+legalAid:    LEGAL_UMU,
     }},
   ]},
 
@@ -258,7 +299,9 @@ const ABIA_LGAS = [
         immigration: {station:"NIS Umuahia South",             officer:"SC Ifeyinwa Dike",         phone:"08034001009",address:"Ohuhu Road, Umuahia South"},
         ndlea:       {station:"NDLEA Umuahia South",           officer:"SC Chima Okorie",          phone:"08034001010",address:"Umuola Road, Umuahia South"},
         naptip:      NAPTIP_UMU,
-        legalAid:    LEGAL_UMU,
+                maternity:   MAT_GOOD_SHEP,
+        govHealth:   govHealth("Ohuhu PHC","Nurse Ngozi Uka (OIC)","08034001009","Ohuhu Road, Umuahia South",["OPD","ANC","Immunisation","Child welfare","Family planning"]),
+legalAid:    LEGAL_UMU,
     }},
   ]},
 
@@ -279,6 +322,8 @@ const ABIA_LGAS = [
         ndlea:       {station:"NDLEA Arochukwu",               officer:"SC Obi Ukachi",            phone:"08035001010",address:"Arochukwu, Abia State"},
         naptip:      naptip("Arochukwu"),
         legalAid:    legal("Arochukwu","Barr. Nkechi Asiegbu (Duty Lawyer)","Legal Aid Council, Market Square, Arochukwu","08050005001"),
+        maternity:   maternity("Arochukwu General Hospital (Maternity)","Dr. Ijem Okereke","08035001003","Mission Road, Arochukwu","Government",["Normal delivery","Antenatal","Midwifery","Postnatal"],true),
+        govHealth:   govHealth("Arochukwu PHC","Nurse Ada Nwachukwu (OIC)","08035001011","Market Square, Arochukwu",["OPD","ANC","Immunisation","Family planning","Child welfare"]),
     }},
   ]},
 
@@ -299,6 +344,8 @@ const ABIA_LGAS = [
         ndlea:       {station:"NDLEA Bende",                   officer:"SC Obi Nkemdirim",         phone:"08036001010",address:"Bende, Abia State"},
         naptip:      naptip("Bende"),
         legalAid:    legal("Bende","Barr. Chukwu Eke (Duty Lawyer)","Legal Aid Council, Market Road, Bende","08050006001"),
+        maternity:   maternity("Bende General Hospital (Maternity)","Dr. Uche Ohaeri","08036001003","Church Road, Bende","Government",["Normal delivery","Antenatal","Midwifery"],true),
+        govHealth:   govHealth("Bende Town PHC","Nurse Ngozi Eke (OIC)","08036001011","Market Road, Bende",["OPD","ANC","Immunisation","Malaria treatment","TB screening"]),
     }},
   ]},
 
@@ -319,6 +366,8 @@ const ABIA_LGAS = [
         ndlea:       {station:"NDLEA Ohafia",                  officer:"SC Oby Nwofor",            phone:"08037001010",address:"Ohafia, Abia State"},
         naptip:      naptip("Ohafia"),
         legalAid:    legal("Ohafia","Barr. Adanna Uru (Duty Lawyer)","Legal Aid Council, Market Road, Ohafia","08050007001"),
+        maternity:   maternity("Ohafia General Hospital (Maternity)","Dr. Chioma Oka","08037001003","Ohafia Town, Abia State","Government",["Normal delivery","Antenatal","Midwifery","C-section referral"],true),
+        govHealth:   govHealth("Ohafia PHC","Nurse Nkiru Eze (OIC)","08037001011","Ohafia Market Road",["OPD","ANC","Immunisation","Family planning","Child welfare"]),
     }},
   ]},
 
@@ -339,6 +388,8 @@ const ABIA_LGAS = [
         ndlea:       {station:"NDLEA Osisioma",                officer:"SC Chuka Nweke",           phone:"08038001010",address:"Osisioma, Abia State"},
         naptip:      NAPTIP_ABA,
         legalAid:    LEGAL_ABA,
+        maternity:   maternity("Osisioma General Hospital (Maternity)","Dr. Lilian Nwosu","08038001003","Airport Road, Osisioma","Government",["Normal delivery","Antenatal","Postnatal"],true),
+        govHealth:   govHealth("Osisioma Industrial PHC","Nurse Ebere Chima (OIC)","08038001011","Industrial Layout, Osisioma",["OPD","ANC","Immunisation","Occupational health","Family planning"]),
     }},
   ]},
 
@@ -359,6 +410,8 @@ const ABIA_LGAS = [
         ndlea:       {station:"NDLEA Isiala Ngwa N.",          officer:"SC Ikenna Ohiri",          phone:"08039001010",address:"Isiala Ngwa North, Abia"},
         naptip:      naptip("Isiala Ngwa North"),
         legalAid:    legal("Isiala Ngwa North","Barr. Ifeoma Eze (Duty Lawyer)","Legal Aid Council, Okpuala, Isiala Ngwa North","08050009001"),
+        maternity:   maternity("Okpuala PHC (Maternity Unit)","Mw. Ngozi Ibe (Midwife-in-Charge)","08039001003","School Road, Okpuala","Government PHC",["Normal delivery","Antenatal","Midwifery"],false),
+        govHealth:   govHealth("Okpuala Ngwa PHC","Nurse Uju Ugwueze (OIC)","08039001011","Ngwa Road, Isiala Ngwa North",["OPD","ANC","Immunisation","Child welfare","Family planning"]),
     }},
   ]},
 
@@ -379,6 +432,8 @@ const ABIA_LGAS = [
         ndlea:       {station:"NDLEA Isiala Ngwa S.",          officer:"SC Emeka Obi",             phone:"08040001010",address:"Nkporo, Abia State"},
         naptip:      naptip("Isiala Ngwa South"),
         legalAid:    legal("Isiala Ngwa South","Barr. Ngozi Nweze (Duty Lawyer)","Legal Aid Council, Market Road, Nkporo","08050010001"),
+        maternity:   maternity("Nkporo PHC (Maternity Unit)","Mw. Blessing Odo (Midwife-in-Charge)","08040001003","Mission Road, Nkporo","Government PHC",["Normal delivery","Antenatal","Midwifery"],false),
+        govHealth:   govHealth("Nkporo PHC","Nurse Ifeoma Ekwu (OIC)","08040001011","Market Road, Nkporo",["OPD","ANC","Immunisation","Child welfare","Family planning"]),
     }},
   ]},
 
@@ -399,6 +454,8 @@ const ABIA_LGAS = [
         ndlea:       {station:"NDLEA Ikwuano",                 officer:"SC Chima Ugwu",            phone:"08041001010",address:"Ikwuano, Abia State"},
         naptip:      NAPTIP_UMU,
         legalAid:    legal("Ikwuano","Barr. Chisom Nwosu (Duty Lawyer)","Legal Aid Council, Oloko Road, Ikwuano","08050011001"),
+        maternity:   maternity("Ikwuano PHC (Maternity Unit)","Mw. Ada Mgba (Midwife-in-Charge)","08041001003","Oloko, Ikwuano","Government PHC",["Normal delivery","Antenatal","Midwifery"],false),
+        govHealth:   govHealth("Ikwuano PHC","Nurse Uloma Ede (OIC)","08041001011","Oloko Road, Ikwuano",["OPD","ANC","Immunisation","Child welfare","HIV counselling"]),
     }},
   ]},
 
@@ -419,6 +476,8 @@ const ABIA_LGAS = [
         ndlea:       {station:"NDLEA Isuikwuato",              officer:"SC Okey Nweke",            phone:"08042001010",address:"Uturu, Abia State"},
         naptip:      naptip("Isuikwuato/Uturu"),
         legalAid:    legal("Isuikwuato","Barr. Ebele Mba (Duty Lawyer)","Legal Aid Council, ABSU Road, Uturu","08050012001"),
+        maternity:   maternity("ABSU Health Centre (Maternity)","Dr. Ogechi Agu","08042001003","ABSU Campus, Uturu","University Clinic",["Antenatal","Normal delivery","Postnatal","Student health"],false),
+        govHealth:   govHealth("Uturu PHC","Nurse Nkiru Ude (OIC)","08042001011","Uturu Market Road, Isuikwuato",["OPD","ANC","Immunisation","Malaria treatment","TB screening","Family planning"]),
     }},
   ]},
 
@@ -439,6 +498,8 @@ const ABIA_LGAS = [
         ndlea:       {station:"NDLEA Obi Ngwa",                officer:"SC Emeka Uka",             phone:"08043001010",address:"Obi Ngwa, Abia State"},
         naptip:      NAPTIP_ABA,
         legalAid:    LEGAL_ABA,
+        maternity:   maternity("Obingwa PHC (Maternity Unit)","Mw. Chisom Ibe (Midwife-in-Charge)","08043001003","Town Hall Road, Obingwa","Government PHC",["Normal delivery","Antenatal","Midwifery"],false),
+        govHealth:   govHealth("Obingwa PHC","Nurse Adaobi Eze (OIC)","08043001011","Market Road, Obingwa",["OPD","ANC","Immunisation","Child welfare","Family planning"]),
     }},
   ]},
 
@@ -459,6 +520,8 @@ const ABIA_LGAS = [
         ndlea:       {station:"NDLEA Ugwunagbo",               officer:"SC Chukwudi Ude",          phone:"08044001010",address:"Ugwunagbo, Abia State"},
         naptip:      NAPTIP_ABA,
         legalAid:    LEGAL_ABA,
+        maternity:   maternity("Akanu PHC (Maternity Unit)","Mw. Nneka Eze (Midwife-in-Charge)","08044001003","Market Road, Akanu","Government PHC",["Normal delivery","Antenatal","Midwifery"],false),
+        govHealth:   govHealth("Akanu PHC","Nurse Oge Uche (OIC)","08044001011","Akanu Road, Ugwunagbo",["OPD","ANC","Immunisation","Child welfare","Family planning"]),
     }},
   ]},
 
@@ -479,6 +542,8 @@ const ABIA_LGAS = [
         ndlea:       {station:"NDLEA Ukwa East",               officer:"SC Okwu Nwachukwu",        phone:"08045001010",address:"Ukwa East, Abia State"},
         naptip:      naptip("Ukwa East"),
         legalAid:    legal("Ukwa East","Barr. Chinwe Orji (Duty Lawyer)","Legal Aid Council, Mission Road, Umuoha","08050015001"),
+        maternity:   maternity("Umuoha PHC (Maternity Unit)","Mw. Adaeze Nwofor (Midwife-in-Charge)","08045001003","Umuoha, Ukwa East","Government PHC",["Normal delivery","Antenatal","Midwifery"],false),
+        govHealth:   govHealth("Umuoha PHC","Nurse Chisom Nweze (OIC)","08045001011","Market Road, Umuoha",["OPD","ANC","Immunisation","Child welfare","Family planning"]),
     }},
   ]},
 
@@ -499,6 +564,8 @@ const ABIA_LGAS = [
         ndlea:       {station:"NDLEA Ukwa West",               officer:"SC Emeka Orji",            phone:"08046001010",address:"Ukwa West, Abia State"},
         naptip:      naptip("Ukwa West"),
         legalAid:    legal("Ukwa West","Barr. Amaka Nwosu (Duty Lawyer)","Legal Aid Council, Asa Road, Ukwa West","08050016001"),
+        maternity:   maternity("Asa PHC (Maternity Unit)","Mw. Ogochi Ibe (Midwife-in-Charge)","08046001003","Ukwa West Market Road, Asa","Government PHC",["Normal delivery","Antenatal","Midwifery"],false),
+        govHealth:   govHealth("Asa PHC","Nurse Nwanneka Ude (OIC)","08046001011","Asa Road, Ukwa West",["OPD","ANC","Immunisation","Child welfare","Family planning"]),
     }},
   ]},
 
@@ -519,6 +586,8 @@ const ABIA_LGAS = [
         ndlea:       {station:"NDLEA Umunneochi",              officer:"SC Obi Nwachukwu",         phone:"08047001010",address:"Umunneochi, Abia State"},
         naptip:      naptip("Umunneochi"),
         legalAid:    legal("Umunneochi","Barr. Nneka Odo (Duty Lawyer)","Legal Aid Council, Church Avenue, Umunneochi","08050017001"),
+        maternity:   maternity("Umunneochi PHC (Maternity Unit)","Mw. Chisom Eze (Midwife-in-Charge)","08047001003","School Road, Umunneochi","Government PHC",["Normal delivery","Antenatal","Midwifery"],false),
+        govHealth:   govHealth("Umunneochi PHC","Nurse Uchechi Ude (OIC)","08047001011","Market Road, Umunneochi",["OPD","ANC","Immunisation","Child welfare","Family planning","TB screening"]),
     }},
   ]},
 ];
@@ -551,6 +620,10 @@ const AGENCIES = [
     emergencyNums:[{label:"NAPTIP National",num:"0803-9000-001"},{label:"SMS Line",num:"15888"}] },
   { id:"legalAid",    label:"Legal Aid / Lawyer",  icon:"⚖️", color:"#b45309",
     emergencyNums:[{label:"Legal Aid Council",num:"0703-000-0000"},{label:"NHRC Abia",num:"+234 803 540 3780"}] },
+  { id:"maternity",   label:"Maternity / Midwifery", icon:"🤱", color:"#ec4899",
+    emergencyNums:[{label:"FMC Umuahia Obs/Gynae",num:"08033001003"},{label:"Emergency",num:"112"}] },
+  { id:"govHealth",   label:"Govt Health Centre",    icon:"🏥", color:"#06b6d4",
+    emergencyNums:[{label:"Ambulance",num:"112"},{label:"FMC Umuahia",num:"08033001003"}] },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -747,6 +820,48 @@ const S = `
 
   /* ── FOOTER ── */
   .footer{border-top:1px solid var(--border);padding:14px 16px;text-align:center;color:var(--muted);font-size:.67rem;line-height:1.8;}
+
+
+  /* ── MATERNITY CARD ─────────────────────────── */
+  .mcard{background:linear-gradient(145deg,rgba(26,4,14,.97),rgba(8,4,12,.97));border:1px solid rgba(236,72,153,.3);border-radius:10px;overflow:hidden;position:relative;}
+  .mcard:hover{border-color:rgba(236,72,153,.55);}
+  .mcard::after{content:'';position:absolute;right:-50px;top:-50px;width:180px;height:180px;background:radial-gradient(circle,rgba(236,72,153,.07),transparent 65%);pointer-events:none;}
+  .mcard-hdr{background:linear-gradient(90deg,rgba(236,72,153,.18),rgba(236,72,153,.04));border-bottom:1px solid rgba(236,72,153,.18);padding:11px 16px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+  .mcard-ag{font-size:.57rem;text-transform:uppercase;letter-spacing:.13em;color:#f9a8d4;font-weight:700;}
+  .mcard-badges{margin-left:auto;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;}
+  .mcard-type-priv{background:rgba(236,72,153,.14);border:1px solid rgba(236,72,153,.28);color:#f9a8d4;padding:2px 8px;border-radius:10px;font-size:.52rem;font-weight:600;letter-spacing:.05em;white-space:nowrap;}
+  .mcard-type-govt{background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.28);color:#67e8f9;padding:2px 8px;border-radius:10px;font-size:.52rem;font-weight:600;letter-spacing:.05em;white-space:nowrap;}
+  .mcard-24hr{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.28);color:#86efac;padding:2px 8px;border-radius:10px;font-size:.52rem;font-weight:600;white-space:nowrap;}
+  .mcard-body{padding:14px 16px;}
+  .mcard-title{font-size:.87rem;font-weight:700;color:#fff;margin-bottom:10px;line-height:1.35;}
+  .mcard-svcs{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0 12px;}
+  .mcard-svc{font-size:.58rem;background:rgba(236,72,153,.07);border:1px solid rgba(236,72,153,.16);color:#f9a8d4;padding:3px 8px;border-radius:8px;}
+  .mcall{width:100%;margin-top:5px;padding:10px;border-radius:7px;border:1px solid rgba(236,72,153,.3);background:rgba(236,72,153,.08);color:#f9a8d4;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:.74rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .18s;text-decoration:none;min-height:42px;}
+  .mcall:hover{background:rgba(236,72,153,.2);}
+  .mcall.primary{background:rgba(236,72,153,.8);color:#fff;border-color:#ec4899;}
+  .mcall.primary:hover{background:#ec4899;}
+  .agency-pill.mat{border-color:rgba(236,72,153,.3);}
+  .agency-pill.mat:hover{border-color:#ec4899;color:#f9a8d4;}
+  .agency-pill.mat.on{background:rgba(236,72,153,.1);border-color:#ec4899;color:#f9a8d4;}
+
+  /* ── GOVT HEALTH CENTRE CARD ─────────────────── */
+  .ghcard{background:linear-gradient(145deg,rgba(2,16,20,.97),rgba(4,10,15,.97));border:1px solid rgba(6,182,212,.28);border-radius:10px;overflow:hidden;position:relative;}
+  .ghcard:hover{border-color:rgba(6,182,212,.5);}
+  .ghcard::after{content:'';position:absolute;right:-50px;top:-50px;width:180px;height:180px;background:radial-gradient(circle,rgba(6,182,212,.06),transparent 65%);pointer-events:none;}
+  .ghcard-hdr{background:linear-gradient(90deg,rgba(6,182,212,.14),rgba(6,182,212,.03));border-bottom:1px solid rgba(6,182,212,.15);padding:11px 16px;display:flex;align-items:center;gap:7px;}
+  .ghcard-ag{font-size:.57rem;text-transform:uppercase;letter-spacing:.13em;color:#67e8f9;font-weight:700;}
+  .ghcard-badge{margin-left:auto;background:rgba(6,182,212,.09);border:1px solid rgba(6,182,212,.25);color:#67e8f9;padding:2px 8px;border-radius:10px;font-size:.52rem;font-weight:600;white-space:nowrap;}
+  .ghcard-body{padding:14px 16px;}
+  .ghcard-title{font-size:.87rem;font-weight:700;color:#fff;margin-bottom:10px;line-height:1.35;}
+  .ghcard-svcs{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0 12px;}
+  .ghcard-svc{font-size:.58rem;background:rgba(6,182,212,.06);border:1px solid rgba(6,182,212,.14);color:#67e8f9;padding:3px 8px;border-radius:8px;}
+  .ghcall{width:100%;margin-top:5px;padding:10px;border-radius:7px;border:1px solid rgba(6,182,212,.28);background:rgba(6,182,212,.07);color:#67e8f9;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:.74rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .18s;text-decoration:none;min-height:42px;}
+  .ghcall:hover{background:rgba(6,182,212,.18);}
+  .ghcall.primary{background:rgba(6,182,212,.75);color:#000;border-color:#06b6d4;}
+  .ghcall.primary:hover{background:#06b6d4;}
+  .agency-pill.gov{border-color:rgba(6,182,212,.3);}
+  .agency-pill.gov:hover{border-color:#06b6d4;color:#67e8f9;}
+  .agency-pill.gov.on{background:rgba(6,182,212,.1);border-color:#06b6d4;color:#67e8f9;}
 
   /* ════════════════════════════════════════════
      TABLET  768px – 1024px
@@ -1004,6 +1119,52 @@ function LawyerCard({ data, area }) {
   );
 }
 
+
+function MaternityCard({ data }) {
+  const govTypes = ["Government","Government PHC","Teaching Hospital","Federal","Mission","University Clinic"];
+  const isGov = govTypes.includes(data.facilityType);
+  return (
+    <div className="mcard">
+      <div className="mcard-hdr">
+        <div className="mcard-ag">🤱 Maternity / Midwifery</div>
+        <div className="mcard-badges">
+          <span className={isGov ? "mcard-type-govt" : "mcard-type-priv"}>{data.facilityType}</span>
+          {data.emergency24hr && <span className="mcard-24hr">🚨 24hr</span>}
+        </div>
+      </div>
+      <div className="mcard-body">
+        <div className="mcard-title">{data.station}</div>
+        <div className="info-row"><span className="info-ico">👩‍⚕️</span><div><span className="info-k">Contact Person</span><span className="info-v">{data.officer}</span></div></div>
+        <div className="info-row"><span className="info-ico">📞</span><div><span className="info-k">Phone</span><a href={`tel:${data.phone}`} className="info-v info-link">{data.phone}</a></div></div>
+        <div className="info-row"><span className="info-ico">📍</span><div><span className="info-k">Address</span><span className="info-v">{data.address}</span></div></div>
+        <div className="mcard-svcs">{data.services.map((s,i)=><span key={i} className="mcard-svc">{s}</span>)}</div>
+        <button className="mcall primary" onClick={()=>window.open(`tel:${data.phone}`)}>📞 Call — {data.phone}</button>
+        {data.emergency24hr && <a href="tel:112" className="mcall" style={{marginTop:4}}>🚨 Emergency — 112</a>}
+      </div>
+    </div>
+  );
+}
+
+function GovtHealthCard({ data }) {
+  return (
+    <div className="ghcard">
+      <div className="ghcard-hdr">
+        <div className="ghcard-ag">🏥 Govt Health Centre / PHC</div>
+        <div className="ghcard-badge">Free Primary Healthcare</div>
+      </div>
+      <div className="ghcard-body">
+        <div className="ghcard-title">{data.station}</div>
+        <div className="info-row"><span className="info-ico">👤</span><div><span className="info-k">Officer-in-Charge</span><span className="info-v">{data.officer}</span></div></div>
+        <div className="info-row"><span className="info-ico">📞</span><div><span className="info-k">Phone</span><a href={`tel:${data.phone}`} className="info-v info-link">{data.phone}</a></div></div>
+        <div className="info-row"><span className="info-ico">📍</span><div><span className="info-k">Address</span><span className="info-v">{data.address}</span></div></div>
+        <div className="ghcard-svcs">{data.services.map((s,i)=><span key={i} className="ghcard-svc">{s}</span>)}</div>
+        <button className="ghcall primary" onClick={()=>window.open(`tel:${data.phone}`)}>📞 Call Centre — {data.phone}</button>
+        <a href="tel:112" className="ghcall" style={{marginTop:4}}>🚨 Emergency Referral — 112</a>
+      </div>
+    </div>
+  );
+}
+
 function CmdCard({ officer, label, variant="" }) {
   return (
     <div className={`cmd-card ${variant}`}>
@@ -1085,7 +1246,7 @@ export default function AbiaEmergencyApp() {
           <div className="flag-strip"><div className="fg"/><div className="fw"/><div className="fg"/></div>
           <div>
             <div className="topbar-title">ABIA STATE EMERGENCY CONTACTS</div>
-            <div className="topbar-sub">17 LGAs · 12 Agencies · Legal Aid Included · NAPTIP</div>
+            <div className="topbar-sub">17 LGAs · 14 Agencies · Maternity · Govt Health Centres</div>
           </div>
           <div className="sos-badge">⚠ SOS · 112</div>
         </div>
@@ -1098,7 +1259,7 @@ export default function AbiaEmergencyApp() {
             <div className="hero-p">
               Police · Fire · Ambulance · FRSC · DSS · EFCC · Civil Defence · Customs · Immigration · NDLEA ·{" "}
               <span style={{color:"#a78bfa"}}>NAPTIP</span> ·{" "}
-              <strong style={{color:"#f59e0b"}}>⚖️ Free Legal Aid & State Lawyers</strong>
+              <strong style={{color:"#f59e0b"}}>⚖️ Legal Aid</strong> · <span style={{color:"#f9a8d4"}}>🤱 Maternity Clinics</span> · <span style={{color:"#67e8f9"}}>🏥 Govt Health Centres</span>
             </div>
             <div className="hero-lgas">{ABIA_LGAS.map(l=><span key={l.lga} className="hero-lga-tag">{l.lga}</span>)}</div>
           </div>
@@ -1213,7 +1374,7 @@ export default function AbiaEmergencyApp() {
                     <div className={`agency-pill ${selAgency===""?"on":""}`} onClick={()=>setSelAgency("")}>🔵 All Agencies</div>
                     {AGENCIES.map(a=>(
                       <div key={a.id}
-                        className={`agency-pill ${a.id==="legalAid"?"law":""} ${a.id==="naptip"?"nap":""} ${selAgency===a.id?"on":""}`}
+                        className={`agency-pill ${a.id==="legalAid"?"law":""} ${a.id==="naptip"?"nap":""} ${a.id==="maternity"?"mat":""} ${a.id==="govHealth"?"gov":""} ${selAgency===a.id?"on":""}`}
                         onClick={()=>setSelAgency(selAgency===a.id?"":a.id)}>
                         {a.icon} {a.label}
                       </div>
@@ -1231,8 +1392,10 @@ export default function AbiaEmergencyApp() {
                     {visible.map(ag=>{
                       const d = areaObj.agencies[ag.id];
                       if(!d) return null;
-                      if(ag.id==="legalAid") return <LawyerCard key={ag.id} data={d} area={areaObj.name}/>;
-                      if(ag.id==="naptip")   return <NaptipCard key={ag.id} data={d}/>;
+                      if(ag.id==="legalAid")  return <LawyerCard key={ag.id} data={d} area={areaObj.name}/>;
+                      if(ag.id==="naptip")    return <NaptipCard key={ag.id} data={d}/>;
+                      if(ag.id==="maternity") return <MaternityCard key={ag.id} data={d}/>;
+                      if(ag.id==="govHealth") return <GovtHealthCard key={ag.id} data={d}/>;
                       return <CCard key={ag.id} data={d} agencyId={ag.id}/>;
                     })}
                   </div>
@@ -1245,7 +1408,7 @@ export default function AbiaEmergencyApp() {
                   <div className="ph-ico">🗺</div>
                   <div className="ph-txt">
                     Select your <strong>Local Government Area</strong> to start<br/>
-                    then choose an <strong>Area or City</strong> to view all 12 agency contacts<br/><br/>
+                    then choose an <strong>Area or City</strong> to view all 14 agency contacts<br/><br/>
                     <span style={{color:"#a78bfa"}}>🚫 NAPTIP Anti-Trafficking Hotline: 0803-9000-001 (SMS: 15888)</span><br/>
                     <span style={{color:"#f59e0b"}}>⚖️ Free Legal Aid: 0703-000-0000 · NHRC Abia: +234 803 540 3780</span>
                   </div>
