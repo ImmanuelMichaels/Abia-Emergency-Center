@@ -569,14 +569,14 @@ export default function Nnwanne() {
       // In development: proxy server handles the API key (CORS safe)
       // In Claude artifacts: direct call works because sandbox injects key
       const IS_DEV = typeof window !== "undefined" &&
-        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-      const ENDPOINT = IS_DEV
-        ? "http://localhost:3001/api/chat"
-        : "https://api.anthropic.com/v1/messages";
+      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 
-      const headers = IS_DEV
-        ? { "Content-Type": "application/json" }
-        : { "Content-Type": "application/json" };
+    const ENDPOINT = IS_DEV
+      ? "http://localhost:3001/api/chat"
+      : "https://abia-emergency-center-production.up.railway.app/api/chat";
+          const headers = { "Content-Type": "application/json" };
+            ? { "Content-Type": "application/json" }
+            : { "Content-Type": "application/json" };
 
       const response = await fetch(ENDPOINT, {
         method: "POST",

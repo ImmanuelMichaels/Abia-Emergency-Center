@@ -2,10 +2,10 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const app = express();
-const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
 
+const PORT = process.env.PORT || 3001;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 app.post("/api/chat", async (req, res) => {
@@ -26,4 +26,6 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-app.listen(3001, () => console.log("✅ Nnwanne proxy running on http://localhost:3001"));
+app.listen(PORT, () => {
+  console.log(`✅ Nnwanne proxy running on port ${PORT}`);
+});
