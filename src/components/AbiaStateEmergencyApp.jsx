@@ -1,17 +1,6 @@
 import { useState, useMemo } from "react";
+import Nnwanne from "./Nnwanne";
 
-// ═══════════════════════════════════════════════════════════════
-//  REAL DATA SOURCES:
-//  • NAPTIP: naptipContacts.js — South-East Zone (Enugu)
-//    ZC Ngozi Okoro, +2348039000004, enugu.zone@naptip.gov.ng
-//    National Hotline: 0803-9000-001 | SMS: 15888
-//  • NHRC/Legal: humanRightsOffices.js — Abia State
-//    Uloma U. Umozurike, +2348035403780, abia@nigeriarights.gov.ng
-//    No. 160 Nwaniba Road, Umuahia, Abia State
-//  • Legal Aid Council national line: 0703-000-0000
-// ═══════════════════════════════════════════════════════════════
-
-// ── REAL NAPTIP DATA (from naptipContacts.js) ─────────────────
 const NAPTIP_REAL = {
   // South-East Zonal Commander (covers Abia, Enugu, Imo, Anambra, Ebonyi)
   zonalCommander: {

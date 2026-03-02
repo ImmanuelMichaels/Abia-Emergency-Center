@@ -20,8 +20,14 @@ app.post("/api/chat", async (req, res) => {
       body: JSON.stringify(req.body),
     });
     const data = await response.json();
+
+    if (data.error) {
+      console.error("❌ Anthropic API error:", JSON.stringify(data.error));
+    }
+
     res.json(data);
   } catch (err) {
+    console.error("❌ Server error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
