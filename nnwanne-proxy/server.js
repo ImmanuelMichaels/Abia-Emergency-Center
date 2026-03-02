@@ -5,7 +5,7 @@ const app = express();
 app.use(cors({ origin: "https://abia-emergency-center.vercel.app" }));
 app.use(express.json({ limit: "2mb" }));
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 app.post("/api/chat", async (req, res) => {
@@ -32,6 +32,6 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ Nnwanne proxy running on port ${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
 });
