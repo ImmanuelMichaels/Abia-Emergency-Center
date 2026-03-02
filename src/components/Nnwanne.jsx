@@ -1,12 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 
-// ═══════════════════════════════════════════════════════════════
-//  NNWANNE — Abia Smart Emergency Intelligence Assistant
-//  Features: Voice I/O · Claude AI · Favourites · Local Knowledge
-//  Directions · Bus/Keke stops · Danger zones · Nearby places
-// ═══════════════════════════════════════════════════════════════
-
-// ── ABIA LOCAL KNOWLEDGE BASE ──────────────────────────────────
 const ABIA_KNOWLEDGE = {
   dangerZones: [
     { area: "Bakassi Boys Area, Aba", risk: "HIGH", note: "Known for sporadic cult activity at night. Avoid after 9pm." },
@@ -566,23 +559,21 @@ export default function Nnwanne() {
       const context = buildContext(userText);
       const systemPrompt = NNWANNE_SYSTEM + context;
       // ── API ENDPOINT ──────────────────────────────────────────────
-      // In development: proxy server handles the API key (CORS safe)
-      // In Claude artifacts: direct call works because sandbox injects key
-      const IS_DEV = typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+      // In development: routes to local proxy (port 3001)
+      // In production: routes to the Railway-hosted proxy
+      const IS_DEV =
+        typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 
-    const ENDPOINT = IS_DEV
-      ? "http://localhost:3001/api/chat"
-      : "https://abia-emergency-center-production.up.railway.app/api/chat";
-          const headers = IS_DEV
-            ? { "Content-Type": "application/json" }
-            : { "Content-Type": "application/json" };
+      const ENDPOINT = IS_DEV
+        ? "http://localhost:3001/api/chat"
+        : "https://abia-emergency-center-production.up.railway.app/api/chat";
 
       const response = await fetch(ENDPOINT, {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-5",
           max_tokens: 1000,
           system: systemPrompt,
           messages: conversationRef.current,
