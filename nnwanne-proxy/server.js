@@ -2,13 +2,24 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const app = express();
-app.use(cors({ origin: "*" })); // temporarily open for testing
+
+// Allow both Vercel frontend and Railway health checks
+app.use(cors({
+  origin: [
+    "https://abia-emergency-center.vercel.app",
+    "https://abia-emergency-center-production.up.railway.app"
+  ]
+}));
 app.use(express.json({ limit: "2mb" }));
 
 const PORT = process.env.PORT || 3001;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 console.log("🔑 Groq Key loaded:", GROQ_API_KEY ? "YES ✅" : "MISSING ❌");
-console.log("🔑 Key preview:", GROQ_API_KEY ? GROQ_API_KEY.slice(0, 10) + "..." : "NONE");
+
+// Health check route — Railway uses this to confirm server is alive
+app.get("/", (req, res) => {
+  res.json({ status: "ok", message: "Abia Emergency Server is running ✅" });
+});
 
 app.post("/api/chat", async (req, res) => {
   try {
@@ -17,8 +28,6 @@ app.post("/api/chat", async (req, res) => {
     const formattedMessages = [];
     if (system) formattedMessages.push({ role: "system", content: system });
     if (messages && Array.isArray(messages)) formattedMessages.push(...messages);
-
-    console.log("📤 Sending to Groq:", JSON.stringify({ model: "llama3-70b-8192", messages: formattedMessages }, null, 2));
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -34,7 +43,6 @@ app.post("/api/chat", async (req, res) => {
     });
 
     const data = await response.json();
-    console.log("📥 Groq raw response:", JSON.stringify(data, null, 2));
 
     if (data.error) {
       console.error("❌ Groq API error:", JSON.stringify(data.error));
