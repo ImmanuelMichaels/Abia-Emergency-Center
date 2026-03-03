@@ -573,7 +573,7 @@ export default function Nnwanne() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-5",
+          model: "llama3-70b-8192",
           max_tokens: 1000,
           system: systemPrompt,
           messages: conversationRef.current,
