@@ -451,22 +451,32 @@ export default function Nnwanne() {
 
   // ── TEXT TO SPEECH ──
   const speak = useCallback((text) => {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const cleanText = text.replace(/[🌿🚨🗺🚌⚠️🏨📞💬👤🔴🟡🟢•\*]/g, "").replace(/\n+/g, ". ");
-    const utter = new SpeechSynthesisUtterance(cleanText);
-    utter.lang = "en-NG";
-    utter.rate = 0.95;
-    utter.pitch = 1.05;
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("female"))
-      || voices.find(v => v.lang.startsWith("en"));
-    if (preferred) utter.voice = preferred;
-    utter.onstart = () => setSpeaking(true);
-    utter.onend = () => setSpeaking(false);
-    utteranceRef.current = utter;
-    window.speechSynthesis.speak(utter);
-  }, []);
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const cleanText = text.replace(/[🌿🚨🗺🚌⚠️🏨📞💬👤🔴🟡🟢•\*]/g, "").replace(/\n+/g, ". ");
+  const utter = new SpeechSynthesisUtterance(cleanText);
+  utter.lang = "en-NG";
+  utter.rate = 0.88;      // slower = more natural, less robotic
+  utter.pitch = 0.85;     // lower pitch = male voice feel
+  utter.volume = 1;
+
+  const voices = window.speechSynthesis.getVoices();
+
+  // Try Nigerian English first, then African English, then deep male voice
+  const preferred = 
+    voices.find(v => v.lang === "en-NG") ||
+    voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("nigerian")) ||
+    voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("male")) ||
+    voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("david")) ||
+    voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("james")) ||
+    voices.find(v => v.lang.startsWith("en") && !v.name.toLowerCase().includes("female"));
+
+  if (preferred) utter.voice = preferred;
+  utter.onstart = () => setSpeaking(true);
+  utter.onend = () => setSpeaking(false);
+  utteranceRef.current = utter;
+  window.speechSynthesis.speak(utter);
+}, []);
 
   // ── STOP SPEAKING ──
   const stopSpeaking = () => {
