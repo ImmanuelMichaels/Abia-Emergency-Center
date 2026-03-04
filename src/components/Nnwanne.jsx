@@ -450,6 +450,15 @@ export default function Nnwanne() {
     recognitionRef.current = rec;
   }, []);
 
+  // ── UNLOCK AUDIO (mobile requires user gesture) ──
+  const unlockAudio = useCallback(() => {
+    if (!audioUnlocked) {
+      const silentAudio = new Audio("data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAAAAAAAAAAAASDs90hvAAAAAAAAAAAAAAAAAAAA");
+      silentAudio.play().catch(() => {});
+      setAudioUnlocked(true);
+    }
+  }, [audioUnlocked]);
+
   // ── TEXT TO SPEECH (ElevenLabs) ──
   const audioRef = useRef(null);
 
@@ -487,6 +496,7 @@ export default function Nnwanne() {
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
+      audio.preload = "auto";
       audioRef.current = audio;
 
       audio.onended = () => {
@@ -499,7 +509,14 @@ export default function Nnwanne() {
         audioRef.current = null;
       };
 
-      await audio.play();
+      // play() returns a promise — catch silently on mobile if blocked
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn("Audio play blocked:", err);
+          setSpeaking(false);
+        });
+      }
     } catch (err) {
       console.error("Speak error:", err);
       setSpeaking(false);
@@ -693,11 +710,10 @@ export default function Nnwanne() {
 
       {/* FLOATING ACTION BUTTON */}
       <button className={`nn-fab ${listening ? "listening" : ""}`} onClick={() => {
-        // Unlock audio engine on first tap — fixes iOS/Android autoplay block
+        // Unlock Audio API on first tap — required for iOS/Android autoplay policy
         if (!audioUnlocked) {
-          const silent = new SpeechSynthesisUtterance(" ");
-          silent.volume = 0;
-          window.speechSynthesis?.speak(silent);
+          const silentAudio = new Audio("data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAAAAAAAAAAAASDs90hvAAAAAAAAAAAAAAAAAAAA");
+          silentAudio.play().catch(() => {});
           setAudioUnlocked(true);
         }
         setOpen(o => !o);
@@ -773,7 +789,7 @@ export default function Nnwanne() {
               {/* QUICK PROMPTS */}
               <div className="nn-quick-btns">
                 {QUICK_PROMPTS.map((q, i) => (
-                  <button key={i} className={`nn-qbtn ${q.danger ? "danger" : ""}`} onClick={() => sendMessage(q.text)}>
+                  <button key={i} className={`nn-qbtn ${q.danger ? "danger" : ""}`} onClick={() => { unlockAudio(); sendMessage(q.text); }}>
                     {q.label}
                   </button>
                 ))}
@@ -781,7 +797,7 @@ export default function Nnwanne() {
 
               {/* INPUT ROW */}
               <div className="nn-input-row">
-                <button className={`nn-voice-btn ${listening ? "active" : ""}`} onClick={toggleVoice} title={listening ? "Stop" : "Voice input"}>
+                <button className={`nn-voice-btn ${listening ? "active" : ""}`} onClick={() => { unlockAudio(); toggleVoice(); }} title={listening ? "Stop" : "Voice input"}>
                   {listening ? "⏹" : speaking ? "🔊" : "🎙️"}
                 </button>
                 <textarea
@@ -793,7 +809,7 @@ export default function Nnwanne() {
                   onKeyDown={handleKeyDown}
                   rows={1}
                 />
-                <button className="nn-send-btn" onClick={() => sendMessage()} disabled={!input.trim() || loading}>➤</button>
+                <button className="nn-send-btn" onClick={() => { unlockAudio(); sendMessage(); }} disabled={!input.trim() || loading}>➤</button>
               </div>
             </>
           )}
