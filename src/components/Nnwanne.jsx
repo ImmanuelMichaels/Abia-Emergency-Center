@@ -450,20 +450,34 @@ export default function Nnwanne() {
     recognitionRef.current = rec;
   }, []);
 
+  // ── TEXT TO SPEECH (ElevenLabs + AudioContext for mobile) ──
+  const audioCtxRef = useRef(null);
+  const audioSourceRef = useRef(null);
+  const audioRef = useRef(null);
+
+  // Call this on every user tap to keep AudioContext alive
+  const ensureAudioContext = useCallback(() => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtxRef.current.state === "suspended") {
+      audioCtxRef.current.resume();
+    }
+  }, []);
+
   // ── UNLOCK AUDIO (mobile requires user gesture) ──
   const unlockAudio = useCallback(() => {
-    if (!audioUnlocked) {
-      const silentAudio = new Audio("data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAAAAAAAAAAAASDs90hvAAAAAAAAAAAAAAAAAAAA");
-      silentAudio.play().catch(() => {});
-      setAudioUnlocked(true);
-    }
-  }, [audioUnlocked]);
-
-  // ── TEXT TO SPEECH (ElevenLabs) ──
-  const audioRef = useRef(null);
+    ensureAudioContext();
+    if (!audioUnlocked) setAudioUnlocked(true);
+  }, [audioUnlocked, ensureAudioContext]);
 
   const speak = useCallback(async (text) => {
     try {
+      // Stop any current audio
+      if (audioSourceRef.current) {
+        try { audioSourceRef.current.stop(); } catch(e) {}
+        audioSourceRef.current = null;
+      }
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
@@ -493,30 +507,34 @@ export default function Nnwanne() {
         return;
       }
 
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      audio.preload = "auto";
-      audioRef.current = audio;
+      const arrayBuffer = await response.arrayBuffer();
 
-      audio.onended = () => {
-        setSpeaking(false);
-        URL.revokeObjectURL(audioUrl);
-        audioRef.current = null;
-      };
-      audio.onerror = () => {
-        setSpeaking(false);
-        audioRef.current = null;
-      };
-
-      // play() returns a promise — catch silently on mobile if blocked
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(err => {
-          console.warn("Audio play blocked:", err);
-          setSpeaking(false);
-        });
+      // Use AudioContext — stays unlocked after first user gesture on mobile
+      const ctx = audioCtxRef.current;
+      if (!ctx) {
+        // Fallback to HTML Audio if AudioContext not initialized
+        const audioBlob = new Blob([arrayBuffer], { type: "audio/mpeg" });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
+        audio.onended = () => { setSpeaking(false); URL.revokeObjectURL(audioUrl); };
+        audio.onerror = () => setSpeaking(false);
+        audio.play().catch(() => setSpeaking(false));
+        return;
       }
+
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+      const source = ctx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(ctx.destination);
+      audioSourceRef.current = source;
+
+      source.onended = () => {
+        setSpeaking(false);
+        audioSourceRef.current = null;
+      };
+
+      source.start(0);
     } catch (err) {
       console.error("Speak error:", err);
       setSpeaking(false);
@@ -525,6 +543,10 @@ export default function Nnwanne() {
 
   // ── STOP SPEAKING ──
   const stopSpeaking = () => {
+    if (audioSourceRef.current) {
+      try { audioSourceRef.current.stop(); } catch(e) {}
+      audioSourceRef.current = null;
+    }
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
@@ -711,11 +733,8 @@ export default function Nnwanne() {
       {/* FLOATING ACTION BUTTON */}
       <button className={`nn-fab ${listening ? "listening" : ""}`} onClick={() => {
         // Unlock Audio API on first tap — required for iOS/Android autoplay policy
-        if (!audioUnlocked) {
-          const silentAudio = new Audio("data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAAAAAAAAAAAASDs90hvAAAAAAAAAAAAAAAAAAAA");
-          silentAudio.play().catch(() => {});
-          setAudioUnlocked(true);
-        }
+        ensureAudioContext();
+        if (!audioUnlocked) setAudioUnlocked(true);
         setOpen(o => !o);
         stopSpeaking();
       }} title="Nnwanne AI Assistant">
