@@ -456,16 +456,20 @@ export default function Nnwanne() {
   const audioSourceRef = useRef(null);
 
   const ensureAudioContext = useCallback(() => {
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (audioCtxRef.current.state === "suspended") {
-      audioCtxRef.current.resume();
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtxRef.current.state === "suspended") {
+        audioCtxRef.current.resume().catch(() => {});
+      }
+    } catch(e) {
+      console.warn("AudioContext not available:", e);
     }
   }, []);
 
   const unlockAudio = useCallback(() => {
-    ensureAudioContext();
+    try { ensureAudioContext(); } catch(e) {}
     if (!audioUnlocked) setAudioUnlocked(true);
   }, [audioUnlocked, ensureAudioContext]);
 
@@ -504,20 +508,25 @@ export default function Nnwanne() {
 
   // Called directly by user tap — guaranteed to work on mobile
   const playAudio = useCallback((url) => {
-    ensureAudioContext();
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    const audio = new Audio(url);
-    audioRef.current = audio;
-    setSpeaking(true);
-    audio.onended = () => { setSpeaking(false); audioRef.current = null; };
-    audio.onerror = () => { setSpeaking(false); audioRef.current = null; };
-    audio.play().catch(err => {
-      console.warn("play failed:", err);
+    try {
+      try { ensureAudioContext(); } catch(e) {}
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      setSpeaking(true);
+      audio.onended = () => { setSpeaking(false); audioRef.current = null; };
+      audio.onerror = () => { setSpeaking(false); audioRef.current = null; };
+      audio.play().catch(err => {
+        console.warn("play failed:", err);
+        setSpeaking(false);
+      });
+    } catch(err) {
+      console.warn("playAudio error:", err);
       setSpeaking(false);
-    });
+    }
   }, [ensureAudioContext]);
 
   // speak() now just fetches — no auto-play
@@ -717,7 +726,7 @@ export default function Nnwanne() {
       {/* FLOATING ACTION BUTTON */}
       <button className={`nn-fab ${listening ? "listening" : ""}`} onClick={() => {
         // Unlock Audio API on first tap — required for iOS/Android autoplay policy
-        ensureAudioContext();
+        try { ensureAudioContext(); } catch(e) {}
         if (!audioUnlocked) setAudioUnlocked(true);
         setOpen(o => !o);
         stopSpeaking();
@@ -774,8 +783,8 @@ export default function Nnwanne() {
                       <div className={`nn-bubble ${msg.role === "user" ? "user" : msg.type === "emergency" ? "emergency" : msg.type === "warning" ? "warning" : "bot"}`}>
                         {msg.content}
                         {msg.audioUrl && (
-                          <div
-                            onClick={() => { unlockAudio(); playAudio(msg.audioUrl); }}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); unlockAudio(); playAudio(msg.audioUrl); }}
                             style={{
                               marginTop: 8, display: "inline-flex", alignItems: "center",
                               gap: 5, cursor: "pointer", fontSize: ".65rem",
@@ -787,7 +796,7 @@ export default function Nnwanne() {
                             }}
                           >
                             🔊 Tap to hear
-                          </div>
+                          </button>
                         )}
                       </div>
                     </div>
