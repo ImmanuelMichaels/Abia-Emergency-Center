@@ -486,21 +486,35 @@ export default function Nnwanne() {
         ? "http://localhost:3001/api/speak"
         : "https://abia-emergency-center-production.up.railway.app/api/speak";
 
+      console.log("🎙️ Fetching audio from:", SPEAK_ENDPOINT);
+
       const response = await fetch(SPEAK_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: cleanText }),
       });
 
-      if (!response.ok) return;
+      console.log("🎙️ Speak response status:", response.status, response.headers.get("content-type"));
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("🎙️ Speak failed:", response.status, errText);
+        return;
+      }
 
       const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
+      console.log("🎙️ Audio blob size:", blob.size, "type:", blob.type);
 
-      // Store audio URL on the message so user can tap to play
+      if (blob.size === 0) {
+        console.error("🎙️ Empty audio blob received!");
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
       setMessages(prev => prev.map(m =>
         m.id === msgId ? { ...m, audioUrl: url } : m
       ));
+      console.log("🎙️ Audio URL set for message:", msgId);
     } catch (err) {
       console.error("fetchAudio error:", err);
     }
