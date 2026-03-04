@@ -450,12 +450,11 @@ export default function Nnwanne() {
     recognitionRef.current = rec;
   }, []);
 
-  // ── TEXT TO SPEECH (ElevenLabs + AudioContext for mobile) ──
+  // ── TEXT TO SPEECH (ElevenLabs) ──
   const audioCtxRef = useRef(null);
-  const audioSourceRef = useRef(null);
   const audioRef = useRef(null);
+  const audioSourceRef = useRef(null);
 
-  // Call this on every user tap to keep AudioContext alive
   const ensureAudioContext = useCallback(() => {
     if (!audioCtxRef.current) {
       audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -465,30 +464,18 @@ export default function Nnwanne() {
     }
   }, []);
 
-  // ── UNLOCK AUDIO (mobile requires user gesture) ──
   const unlockAudio = useCallback(() => {
     ensureAudioContext();
     if (!audioUnlocked) setAudioUnlocked(true);
   }, [audioUnlocked, ensureAudioContext]);
 
-  const speak = useCallback(async (text) => {
+  // Fetch audio from ElevenLabs and store URL on message (called after response)
+  const fetchAudio = useCallback(async (text, msgId) => {
     try {
-      // Stop any current audio
-      if (audioSourceRef.current) {
-        try { audioSourceRef.current.stop(); } catch(e) {}
-        audioSourceRef.current = null;
-      }
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-      setSpeaking(true);
+      const cleanText = text.replace(/[👮🚨🗺🚌⚠️🏨📞💬👤🔴🟡🟢•\*]/g, "").replace(/\n+/g, ". ").trim().slice(0, 400);
+      if (!cleanText) return;
 
-      const cleanText = text.replace(/[👮🚨🗺🚌⚠️🏨📞💬👤🔴🟡🟢•\*]/g, "").replace(/\n+/g, ". ").trim();
-      if (!cleanText) { setSpeaking(false); return; }
-
-      const IS_DEV =
-        typeof window !== "undefined" &&
+      const IS_DEV = typeof window !== "undefined" &&
         (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 
       const SPEAK_ENDPOINT = IS_DEV
@@ -501,47 +488,44 @@ export default function Nnwanne() {
         body: JSON.stringify({ text: cleanText }),
       });
 
-      if (!response.ok) {
-        console.error("ElevenLabs error:", response.status);
-        setSpeaking(false);
-        return;
-      }
+      if (!response.ok) return;
 
-      const arrayBuffer = await response.arrayBuffer();
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
 
-      // Use AudioContext — stays unlocked after first user gesture on mobile
-      const ctx = audioCtxRef.current;
-      if (!ctx) {
-        // Fallback to HTML Audio if AudioContext not initialized
-        const audioBlob = new Blob([arrayBuffer], { type: "audio/mpeg" });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-        audioRef.current = audio;
-        audio.onended = () => { setSpeaking(false); URL.revokeObjectURL(audioUrl); };
-        audio.onerror = () => setSpeaking(false);
-        audio.play().catch(() => setSpeaking(false));
-        return;
-      }
-
-      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-      const source = ctx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(ctx.destination);
-      audioSourceRef.current = source;
-
-      source.onended = () => {
-        setSpeaking(false);
-        audioSourceRef.current = null;
-      };
-
-      source.start(0);
+      // Store audio URL on the message so user can tap to play
+      setMessages(prev => prev.map(m =>
+        m.id === msgId ? { ...m, audioUrl: url } : m
+      ));
     } catch (err) {
-      console.error("Speak error:", err);
-      setSpeaking(false);
+      console.error("fetchAudio error:", err);
     }
   }, []);
 
-  // ── STOP SPEAKING ──
+  // Called directly by user tap — guaranteed to work on mobile
+  const playAudio = useCallback((url) => {
+    ensureAudioContext();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    const audio = new Audio(url);
+    audioRef.current = audio;
+    setSpeaking(true);
+    audio.onended = () => { setSpeaking(false); audioRef.current = null; };
+    audio.onerror = () => { setSpeaking(false); audioRef.current = null; };
+    audio.play().catch(err => {
+      console.warn("play failed:", err);
+      setSpeaking(false);
+    });
+  }, [ensureAudioContext]);
+
+  // speak() now just fetches — no auto-play
+  const speak = useCallback((text, msgId) => {
+    fetchAudio(text, msgId);
+  }, [fetchAudio]);
+
+    // ── STOP SPEAKING ──
   const stopSpeaking = () => {
     if (audioSourceRef.current) {
       try { audioSourceRef.current.stop(); } catch(e) {}
@@ -669,13 +653,13 @@ export default function Nnwanne() {
       const isWarning = danger !== null;
 
       setMessages(prev => [...prev, {
-        role: "bot", id: Date.now() + 1,
+        role: "bot", id: newMsgId,
         content: botText,
         type: isEmergency ? "emergency" : isWarning ? "warning" : "normal",
         dangerAlert: danger || null,
       }]);
 
-      speak(botText);
+      speak(botText, newMsgId);
     } catch (err) {
       setMessages(prev => [...prev, {
         role: "bot", id: Date.now() + 1,
@@ -789,6 +773,22 @@ export default function Nnwanne() {
                     <div className={`nn-msg ${msg.role}`}>
                       <div className={`nn-bubble ${msg.role === "user" ? "user" : msg.type === "emergency" ? "emergency" : msg.type === "warning" ? "warning" : "bot"}`}>
                         {msg.content}
+                        {msg.audioUrl && (
+                          <div
+                            onClick={() => { unlockAudio(); playAudio(msg.audioUrl); }}
+                            style={{
+                              marginTop: 8, display: "inline-flex", alignItems: "center",
+                              gap: 5, cursor: "pointer", fontSize: ".65rem",
+                              color: "rgba(0,200,83,.8)", fontFamily: "Syne",
+                              fontWeight: 700, letterSpacing: ".05em",
+                              background: "rgba(0,200,83,.08)",
+                              border: "1px solid rgba(0,200,83,.2)",
+                              borderRadius: 8, padding: "4px 10px"
+                            }}
+                          >
+                            🔊 Tap to hear
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
