@@ -660,6 +660,7 @@ export default function Nnwanne() {
 
       const isEmergency = /\b(help|emergency|danger|attack|fire|accident|robber|kidnap|bleeding|unconscious|stabbed|shot|rape)\b/i.test(userText);
       const isWarning = danger !== null;
+      const newMsgId = Date.now() + 1;
 
       setMessages(prev => [...prev, {
         role: "bot", id: newMsgId,
