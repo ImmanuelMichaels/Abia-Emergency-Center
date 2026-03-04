@@ -401,13 +401,14 @@ export default function Nnwanne() {
   const [messages, setMessages] = useState([
     {
       role: "bot", id: Date.now(),
-      content: "Nna/Nne! I'm Nnwanne 🌿 — your Abia emergency guide and navigator.\n\nI can help you:\n• 🚨 Report emergencies & dial saved contacts\n• 🗺 Navigate Aba & Umuahia streets\n• 🚌 Find the right bus stop or keke route\n• ⚠️ Check danger zones\n• 🏨 Find hotels, petrol stations & food\n\nHow can I help you right now?"
+      content: "Nna/Nne! I'm Nnwanne 👮 — your Abia emergency guide and navigator.\n\nI can help you:\n• 🚨 Report emergencies & dial saved contacts\n• 🗺 Navigate Aba & Umuahia streets\n• 🚌 Find the right bus stop or keke route\n• ⚠️ Check danger zones\n• 🏨 Find hotels, petrol stations & food\n\nHow can I help you right now?"
     }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [favs, setFavs] = useState(() => {
     try { return JSON.parse(localStorage.getItem("nnwanne_favs") || "[]"); } catch { return []; }
   });
@@ -451,32 +452,39 @@ export default function Nnwanne() {
 
   // ── TEXT TO SPEECH ──
   const speak = useCallback((text) => {
-  if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const cleanText = text.replace(/[🌿🚨🗺🚌⚠️🏨📞💬👤🔴🟡🟢•\*]/g, "").replace(/\n+/g, ". ");
-  const utter = new SpeechSynthesisUtterance(cleanText);
-  utter.lang = "en-NG";
-  utter.rate = 0.88;      // slower = more natural, less robotic
-  utter.pitch = 0.85;     // lower pitch = male voice feel
-  utter.volume = 1;
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const cleanText = text.replace(/[👮🚨🗺🚌⚠️🏨📞💬👤🔴🟡🟢•\*]/g, "").replace(/\n+/g, ". ");
 
-  const voices = window.speechSynthesis.getVoices();
+    const doSpeak = () => {
+      const utter = new SpeechSynthesisUtterance(cleanText);
+      utter.lang = "en-NG";
+      utter.rate = 0.88;
+      utter.pitch = 0.85;
+      utter.volume = 1;
+      const voices = window.speechSynthesis.getVoices();
+      const preferred =
+        voices.find(v => v.lang === "en-NG") ||
+        voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("nigerian")) ||
+        voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("male")) ||
+        voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("david")) ||
+        voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("james")) ||
+        voices.find(v => v.lang.startsWith("en") && !v.name.toLowerCase().includes("female"));
+      if (preferred) utter.voice = preferred;
+      utter.onstart = () => setSpeaking(true);
+      utter.onend = () => setSpeaking(false);
+      utteranceRef.current = utter;
+      window.speechSynthesis.speak(utter);
+    };
 
-  // Try Nigerian English first, then African English, then deep male voice
-  const preferred = 
-    voices.find(v => v.lang === "en-NG") ||
-    voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("nigerian")) ||
-    voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("male")) ||
-    voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("david")) ||
-    voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("james")) ||
-    voices.find(v => v.lang.startsWith("en") && !v.name.toLowerCase().includes("female"));
-
-  if (preferred) utter.voice = preferred;
-  utter.onstart = () => setSpeaking(true);
-  utter.onend = () => setSpeaking(false);
-  utteranceRef.current = utter;
-  window.speechSynthesis.speak(utter);
-}, []);
+    // On mobile, voices may not be loaded yet — wait for them
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length === 0) {
+      window.speechSynthesis.onvoiceschanged = () => doSpeak();
+    } else {
+      doSpeak();
+    }
+  }, []);
 
   // ── STOP SPEAKING ──
   const stopSpeaking = () => {
@@ -583,7 +591,7 @@ export default function Nnwanne() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          model: "llama3-70b-8192",
           max_tokens: 1000,
           system: systemPrompt,
           messages: conversationRef.current,
@@ -661,8 +669,18 @@ export default function Nnwanne() {
       <style>{BOT_STYLES}</style>
 
       {/* FLOATING ACTION BUTTON */}
-      <button className={`nn-fab ${listening ? "listening" : ""}`} onClick={() => { setOpen(o => !o); stopSpeaking(); }} title="Nnwanne AI Assistant">
-        {listening ? "🎙️" : open ? "✕" : "🌿"}
+      <button className={`nn-fab ${listening ? "listening" : ""}`} onClick={() => {
+        // Unlock audio engine on first tap — fixes iOS/Android autoplay block
+        if (!audioUnlocked) {
+          const silent = new SpeechSynthesisUtterance(" ");
+          silent.volume = 0;
+          window.speechSynthesis?.speak(silent);
+          setAudioUnlocked(true);
+        }
+        setOpen(o => !o);
+        stopSpeaking();
+      }} title="Nnwanne AI Assistant">
+        {listening ? "🎙️" : open ? "✕" : "👮"}
       </button>
 
       {/* CHAT OVERLAY */}
@@ -671,7 +689,7 @@ export default function Nnwanne() {
           {/* HEADER */}
           <div className="nn-header">
             <div className="nn-avatar">
-              🌿
+              👮
               <div className={`nn-avatar-ring ${speaking ? "speaking" : ""}`} />
             </div>
             <div className="nn-hdr-text">
