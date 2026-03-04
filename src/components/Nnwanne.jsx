@@ -459,8 +459,8 @@ export default function Nnwanne() {
     const doSpeak = () => {
       const utter = new SpeechSynthesisUtterance(cleanText);
       utter.lang = "en-NG";
-      utter.rate = 0.88;
-      utter.pitch = 0.85;
+      utter.rate = 1.1;
+      utter.pitch = 0.75;
       utter.volume = 1;
       const voices = window.speechSynthesis.getVoices();
       const preferred =
