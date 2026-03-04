@@ -450,45 +450,68 @@ export default function Nnwanne() {
     recognitionRef.current = rec;
   }, []);
 
-  // ── TEXT TO SPEECH ──
-  const speak = useCallback((text) => {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const cleanText = text.replace(/[👮🚨🗺🚌⚠️🏨📞💬👤🔴🟡🟢•\*]/g, "").replace(/\n+/g, ". ");
+  // ── TEXT TO SPEECH (ElevenLabs) ──
+  const audioRef = useRef(null);
 
-    const doSpeak = () => {
-      const utter = new SpeechSynthesisUtterance(cleanText);
-      utter.lang = "en-NG";
-      utter.rate = 1.1;
-      utter.pitch = 0.75;
-      utter.volume = 1;
-      const voices = window.speechSynthesis.getVoices();
-      const preferred =
-        voices.find(v => v.lang === "en-NG") ||
-        voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("nigerian")) ||
-        voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("male")) ||
-        voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("david")) ||
-        voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("james")) ||
-        voices.find(v => v.lang.startsWith("en") && !v.name.toLowerCase().includes("female"));
-      if (preferred) utter.voice = preferred;
-      utter.onstart = () => setSpeaking(true);
-      utter.onend = () => setSpeaking(false);
-      utteranceRef.current = utter;
-      window.speechSynthesis.speak(utter);
-    };
+  const speak = useCallback(async (text) => {
+    try {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      setSpeaking(true);
 
-    // On mobile, voices may not be loaded yet — wait for them
-    const voices = window.speechSynthesis.getVoices();
-    if (voices.length === 0) {
-      window.speechSynthesis.onvoiceschanged = () => doSpeak();
-    } else {
-      doSpeak();
+      const cleanText = text.replace(/[👮🚨🗺🚌⚠️🏨📞💬👤🔴🟡🟢•\*]/g, "").replace(/\n+/g, ". ").trim();
+      if (!cleanText) { setSpeaking(false); return; }
+
+      const IS_DEV =
+        typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+      const SPEAK_ENDPOINT = IS_DEV
+        ? "http://localhost:3001/api/speak"
+        : "https://abia-emergency-center-production.up.railway.app/api/speak";
+
+      const response = await fetch(SPEAK_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: cleanText }),
+      });
+
+      if (!response.ok) {
+        console.error("ElevenLabs error:", response.status);
+        setSpeaking(false);
+        return;
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        setSpeaking(false);
+        URL.revokeObjectURL(audioUrl);
+        audioRef.current = null;
+      };
+      audio.onerror = () => {
+        setSpeaking(false);
+        audioRef.current = null;
+      };
+
+      await audio.play();
+    } catch (err) {
+      console.error("Speak error:", err);
+      setSpeaking(false);
     }
   }, []);
 
   // ── STOP SPEAKING ──
   const stopSpeaking = () => {
-    window.speechSynthesis?.cancel();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
     setSpeaking(false);
   };
 
