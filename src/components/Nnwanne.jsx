@@ -451,109 +451,20 @@ export default function Nnwanne() {
   }, []);
 
   // ── TEXT TO SPEECH (ElevenLabs) ──
-  const audioCtxRef = useRef(null);
-  const audioRef = useRef(null);
-  const audioSourceRef = useRef(null);
-
-  const ensureAudioContext = useCallback(() => {
-    try {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (audioCtxRef.current.state === "suspended") {
-        audioCtxRef.current.resume().catch(() => {});
-      }
-    } catch(e) {
-      console.warn("AudioContext not available:", e);
-    }
-  }, []);
 
   const unlockAudio = useCallback(() => {
-    try { ensureAudioContext(); } catch(e) {}
-    if (!audioUnlocked) setAudioUnlocked(true);
-  }, [audioUnlocked, ensureAudioContext]);
-
-  // Fetch audio from ElevenLabs and store URL on message (called after response)
-  const fetchAudio = useCallback(async (text, msgId) => {
-    try {
-      const cleanText = text.replace(/[👮🚨🗺🚌⚠️🏨📞💬👤🔴🟡🟢•\*]/g, "").replace(/\n+/g, ". ").trim().slice(0, 400);
-      if (!cleanText) return;
-
-      const IS_DEV = typeof window !== "undefined" &&
-        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-
-      const SPEAK_ENDPOINT = IS_DEV
-        ? "http://localhost:3001/api/speak"
-        : "https://abia-emergency-center-production.up.railway.app/api/speak";
-
-      console.log("🎙️ Fetching audio from:", SPEAK_ENDPOINT);
-
-      const response = await fetch(SPEAK_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: cleanText }),
-      });
-
-      console.log("🎙️ Speak response status:", response.status, response.headers.get("content-type"));
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error("🎙️ Speak failed:", response.status, errText);
-        return;
-      }
-
-      const blob = await response.blob();
-      console.log("🎙️ Audio blob size:", blob.size, "type:", blob.type);
-
-      if (blob.size === 0) {
-        console.error("🎙️ Empty audio blob received!");
-        return;
-      }
-
-      const url = URL.createObjectURL(blob);
-      setMessages(prev => prev.map(m =>
-        m.id === msgId ? { ...m, audioUrl: url } : m
-      ));
-      console.log("🎙️ Audio URL set for message:", msgId);
-    } catch (err) {
-      console.error("fetchAudio error:", err);
+    if (!audioUnlocked) {
+      const silent = new SpeechSynthesisUtterance(" ");
+      silent.volume = 0;
+      window.speechSynthesis?.speak(silent);
+      setAudioUnlocked(true);
     }
-  }, []);
+  }, [audioUnlocked]);
 
-  // Called directly by user tap — guaranteed to work on mobile
-  const playAudio = useCallback((url) => {
-    try {
-      try { ensureAudioContext(); } catch(e) {}
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      setSpeaking(true);
-      audio.onended = () => { setSpeaking(false); audioRef.current = null; };
-      audio.onerror = () => { setSpeaking(false); audioRef.current = null; };
-      audio.play().catch(err => {
-        console.warn("play failed:", err);
-        setSpeaking(false);
-      });
-    } catch(err) {
-      console.warn("playAudio error:", err);
-      setSpeaking(false);
-    }
-  }, [ensureAudioContext]);
 
-  // speak() now just fetches — no auto-play
-  const speak = useCallback((text, msgId) => {
-    fetchAudio(text, msgId);
-  }, [fetchAudio]);
 
     // ── STOP SPEAKING ──
   const stopSpeaking = () => {
-    if (audioSourceRef.current) {
-      try { audioSourceRef.current.stop(); } catch(e) {}
-      audioSourceRef.current = null;
-    }
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
@@ -741,7 +652,6 @@ export default function Nnwanne() {
       {/* FLOATING ACTION BUTTON */}
       <button className={`nn-fab ${listening ? "listening" : ""}`} onClick={() => {
         // Unlock Audio API on first tap — required for iOS/Android autoplay policy
-        try { ensureAudioContext(); } catch(e) {}
         if (!audioUnlocked) setAudioUnlocked(true);
         setOpen(o => !o);
         stopSpeaking();
@@ -797,9 +707,16 @@ export default function Nnwanne() {
                     <div className={`nn-msg ${msg.role}`}>
                       <div className={`nn-bubble ${msg.role === "user" ? "user" : msg.type === "emergency" ? "emergency" : msg.type === "warning" ? "warning" : "bot"}`}>
                         {msg.content}
-                        {msg.audioUrl && (
+
+                        {msg.role !== "user" && msg.audioUrl && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); unlockAudio(); playAudio(msg.audioUrl); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const audio = new Audio(msg.audioUrl);
+                              audio.play().catch(() => {});
+                              setSpeaking(true);
+                              audio.onended = () => setSpeaking(false);
+                            }}
                             style={{
                               marginTop: 8, display: "inline-flex", alignItems: "center",
                               gap: 5, cursor: "pointer", fontSize: ".65rem",
@@ -813,6 +730,889 @@ export default function Nnwanne() {
                             🔊 Tap to hear
                           </button>
                         )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {loading && (
+                  <div className="nn-msg">
+                    <div className="nn-bubble bot">
+                      <div className="nn-typing">
+                        <div className="nn-dot" /><div className="nn-dot" /><div className="nn-dot" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* QUICK PROMPTS */}
+              <div className="nn-quick-btns">
+                {QUICK_PROMPTS.map((q, i) => (
+                  <button key={i} className={`nn-qbtn ${q.danger ? "danger" : ""}`} onClick={() => { unlockAudio(); sendMessage(q.text); }}>
+                    {q.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* INPUT ROW */}
+              <div className="nn-input-row">
+                <button className={`nn-voice-btn ${listening ? "active" : ""}`} onClick={() => { unlockAudio(); toggleVoice(); }} title={listening ? "Stop" : "Voice input"}>
+                  {listening ? "⏹" : speaking ? "🔊" : "🎙️"}
+                </button>
+                <textarea
+                  ref={textareaRef}
+                  className="nn-textarea"
+                  placeholder="Ask Nnwanne anything about Abia…"
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  rows={1}
+                />
+                <button className="nn-send-btn" onClick={() => { unlockAudio(); sendMessage(); }} disabled={!input.trim() || loading}>➤</button>
+              </div>
+            </>
+          )}
+
+          {/* ── FAVOURITES TAB ── */}
+          {tab === "favs" && (
+            <div className="nn-favs-panel">
+              {favs.length > 0 && (
+                <button className="nn-sos-all-btn" onClick={sosAll}>
+                  🚨 SOS — ALERT ALL {favs.length} SAVED CONTACT{favs.length > 1 ? "S" : ""}
+                </button>
+              )}
+
+              {favs.length === 0 && !addFavForm && (
+                <div className="nn-empty-favs">
+                  <div style={{ fontSize: "2rem", marginBottom: 10 }}>⭐</div>
+                  No saved contacts yet.<br />
+                  Add your family, doctor, or trusted contacts below so Nnwanne can alert them in an emergency.
+                </div>
+              )}
+
+              {favs.map(f => (
+                <div key={f.id} className="nn-fav-card">
+                  <div className="nn-fav-ico">{f.icon}</div>
+                  <div>
+                    <div className="nn-fav-name">{f.name}</div>
+                    <div className="nn-fav-phone">{f.phone}</div>
+                    <div className="nn-fav-relation">{f.relation}</div>
+                  </div>
+                  <div className="nn-fav-actions">
+                    <button className="nn-fav-btn call" onClick={() => window.open(`tel:${f.phone}`)}>📞 Call</button>
+                    <button className="nn-fav-btn call" style={{ background: "rgba(0,100,255,.15)", borderColor: "rgba(100,149,237,.3)", color: "#c5d8ff" }}
+                      onClick={() => window.open(`sms:${f.phone}?body=${encodeURIComponent("🚨 Emergency! I need help. Please call me immediately.")}`)}>
+                      💬 SMS
+                    </button>
+                    <button className="nn-fav-btn del" onClick={() => deleteFav(f.id)}>🗑</button>
+                  </div>
+                </div>
+              ))}
+
+              {!addFavForm ? (
+                <button className="nn-add-submit" style={{ marginTop: 8 }} onClick={() => setAddFavForm(true)}>
+                  + ADD EMERGENCY CONTACT
+                </button>
+              ) : (
+                <div className="nn-add-fav-form">
+                  <div className="nn-add-title">Add Emergency Contact</div>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 7 }}>
+                    {Object.entries(RELATION_ICONS).map(([rel, ico]) => (
+                      <button key={rel} onClick={() => setNewFav(f => ({ ...f, relation: rel, icon: ico }))}
+                        style={{
+                          flex: 1, padding: "5px 2px", fontSize: ".65rem", fontFamily: "Syne", fontWeight: 600,
+                          background: newFav.relation === rel ? "rgba(0,200,83,.2)" : "rgba(255,255,255,.04)",
+                          border: `1px solid ${newFav.relation === rel ? "rgba(0,200,83,.5)" : "rgba(255,255,255,.1)"}`,
+                          borderRadius: 6, color: newFav.relation === rel ? "#00e676" : "rgba(255,255,255,.4)", cursor: "pointer"
+                        }}>
+                        {ico}
+                      </button>
+                    ))}
+                  </div>
+                  <input className="nn-add-input" placeholder="Name (e.g. Mama, Dr. Okafor)" value={newFav.name} onChange={e => setNewFav(f => ({ ...f, name: e.target.value }))} />
+                  <input className="nn-add-input" placeholder="Phone number (e.g. 08012345678)" type="tel" value={newFav.phone} onChange={e => setNewFav(f => ({ ...f, phone: e.target.value }))} />
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button className="nn-add-submit" onClick={addFav}>✓ SAVE CONTACT</button>
+                    <button className="nn-add-submit" style={{ background: "rgba(255,255,255,.07)", color: "rgba(255,255,255,.5)" }} onClick={() => setAddFavForm(false)}>Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              {/* QUICK DIAL SECTION */}
+              <div style={{ marginTop: 16, borderTop: "1px solid rgba(0,200,83,.1)", paddingTop: 12 }}>
+                <div style={{ fontSize: ".6rem", fontFamily: "Syne", fontWeight: 700, color: "rgba(0,200,83,.5)", letterSpacing: ".1em", marginBottom: 8 }}>ABIA STATE EMERGENCY HOTLINES</div>
+                {[
+                  { label: "General Emergency", num: "112", ico: "🚨" },
+                  { label: "Police", num: "199", ico: "🚔" },
+                  { label: "FRSC Road Safety", num: "122", ico: "🛣️" },
+                  { label: "NAPTIP (Anti-Trafficking)", num: "08039000001", ico: "🚫" },
+                  { label: "Legal Aid Council", num: "07030000000", ico: "⚖️" },
+                  { label: "NHRC Abia", num: "08035403780", ico: "🏛️" },
+                ].map((h, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: ".9rem" }}>{h.ico}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: ".63rem", color: "rgba(255,255,255,.4)", fontFamily: "Syne" }}>{h.label}</div>
+                      <div style={{ fontFamily: "JetBrains Mono", fontSize: ".72rem", color: "rgba(0,200,83,.8)" }}>{h.num}</div>
+                    </div>
+                    <button className="nn-fav-btn call" onClick={() => window.open(`tel:${h.num}`)}>📞</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+  // ── TEXT TO SPEECH (ElevenLabs) ──
+  const audioRef = useRef(null);
+
+  const speak = useCallback(async (text, msgId) => {
+    try {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        URL.revokeObjectURL(audioRef.current.src);
+        audioRef.current = null;
+      }
+      setSpeaking(true);
+
+      const cleanText = text
+        .replace(/[👮🚨🗺🚌⚠️🏨📞💬👤🔴🟡🟢•\*]/g, "")
+        .replace(/\n+/g, ". ")
+        .trim()
+        .slice(0, 400);
+      if (!cleanText) { setSpeaking(false); return; }
+
+      const IS_DEV = typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+      const SPEAK_ENDPOINT = IS_DEV
+        ? "http://localhost:3001/api/speak"
+        : "https://abia-emergency-center-production.up.railway.app/api/speak";
+
+      const response = await fetch(SPEAK_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: cleanText }),
+      });
+
+      if (!response.ok) {
+        console.error("ElevenLabs error:", response.status);
+        setSpeaking(false);
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+
+      // Store on message for mobile tap-to-play
+      if (typeof msgId !== "undefined") {
+        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, audioUrl: url } : m));
+      }
+
+      const audio = new Audio(url);
+      audioRef.current = audio;
+
+      audio.onended = () => { setSpeaking(false); audioRef.current = null; };
+      audio.onerror = () => { setSpeaking(false); audioRef.current = null; };
+
+      // Try auto-play (works on desktop), fallback to tap-to-play on mobile
+      audio.play().catch(() => { setSpeaking(false); });
+
+    } catch (err) {
+      console.error("Speak error:", err);
+      setSpeaking(false);
+    }
+  }, []);
+
+  const unlockAudio = useCallback(() => {
+    if (!audioUnlocked) setAudioUnlocked(true);
+  }, [audioUnlocked]);
+
+    // ── STOP SPEAKING ──
+  const stopSpeaking = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setSpeaking(false);
+  };
+
+  // ── TOGGLE VOICE INPUT ──
+  const toggleVoice = () => {
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+    } else {
+      stopSpeaking();
+      recognitionRef.current?.start();
+      setListening(true);
+    }
+  };
+
+  // ── DETECT DANGER ZONE MENTION ──
+  const checkDangerZone = (text) => {
+    const lowerText = text.toLowerCase();
+    return ABIA_KNOWLEDGE.dangerZones.find(z =>
+      lowerText.includes(z.area.toLowerCase().split(",")[0].toLowerCase()) ||
+      z.area.toLowerCase().split(",").some(part => lowerText.includes(part.trim().toLowerCase()))
+    );
+  };
+
+  // ── BUILD CONTEXT STRING ──
+  const buildContext = (userMsg) => {
+    const ctx = [];
+    const lower = userMsg.toLowerCase();
+
+    if (lower.includes("hotel") || lower.includes("lodge") || lower.includes("stay")) {
+      ctx.push("HOTELS: " + ABIA_KNOWLEDGE.hotels.map(h => `${h.name} (${h.area}, ${h.vicinity}, ☎${h.phone})`).join("; "));
+    }
+    if (lower.includes("petrol") || lower.includes("fuel") || lower.includes("filling")) {
+      ctx.push("PETROL STATIONS: " + ABIA_KNOWLEDGE.petrolStations.map(p => `${p.name} - ${p.vicinity}`).join("; "));
+    }
+    if (lower.includes("maternity") || lower.includes("midwif") || lower.includes("delivery") || lower.includes("antenatal") || lower.includes("pregnant") || lower.includes("labour") || lower.includes("labor") || lower.includes("clinic") || lower.includes("gynae") || lower.includes("gynecol") || lower.includes("hospital") || lower.includes("baby") || lower.includes("birth")) {
+      const mat = ABIA_KNOWLEDGE.maternityHospitals;
+      ctx.push("MATERNITY HOSPITALS & CLINICS: " + mat.map(m => `${m.name} [${m.type}] - ${m.vicinity}, ☎${m.phone} | Services: ${m.services.join(", ")} ${m.emergency ? "| 🚨 24hr emergency" : ""}`).join("; "));
+    }
+    if (lower.includes("food") || lower.includes("eat") || lower.includes("restaurant") || lower.includes("hungry")) {
+      ctx.push("FOOD JOINTS: " + ABIA_KNOWLEDGE.foodJoints.map(f => `${f.name} (${f.type}) - ${f.vicinity}`).join("; "));
+    }
+    if (lower.includes("police") || lower.includes("station")) {
+      ctx.push("POLICE STATIONS: " + ABIA_KNOWLEDGE.policeStations.map(p => `${p.name}, ${p.area}, ☎${p.phone}`).join("; "));
+    }
+    if (lower.includes("bus") || lower.includes("keke") || lower.includes("transport") || lower.includes("how to get")) {
+      const aba = ABIA_KNOWLEDGE.busStops.aba.map(b => `${b.name} (${b.area}) → ${b.routes.join("/")} ${b.keke ? "[keke avail]" : ""}`).join("; ");
+      const umu = ABIA_KNOWLEDGE.busStops.umuahia.map(b => `${b.name} (${b.area}) → ${b.routes.join("/")} ${b.keke ? "[keke avail]" : ""}`).join("; ");
+      ctx.push(`ABA BUS STOPS: ${aba}`);
+      ctx.push(`UMUAHIA BUS STOPS: ${umu}`);
+    }
+    if (lower.includes("danger") || lower.includes("safe") || lower.includes("avoid") || lower.includes("risky")) {
+      ctx.push("DANGER ZONES: " + ABIA_KNOWLEDGE.dangerZones.map(d => `${d.area} [${d.risk}]: ${d.note}`).join("; "));
+    }
+    if (favs.length > 0) {
+      ctx.push("USER'S SAVED CONTACTS: " + favs.map(f => `${f.name} (${f.relation}) - ${f.phone}`).join("; "));
+    }
+
+    // Check street directions
+    Object.keys(ABIA_KNOWLEDGE.streetDirections).forEach(key => {
+      if (key.split(" ").some(word => lower.includes(word))) {
+        ctx.push(`ROUTE (${key}): ${ABIA_KNOWLEDGE.streetDirections[key]}`);
+      }
+    });
+
+    return ctx.length > 0 ? "\n\n[LOCAL DATA]\n" + ctx.join("\n") : "";
+  };
+
+  // ── SEND MESSAGE ──
+  const sendMessage = useCallback(async (text) => {
+    const userText = (text || input).trim();
+    if (!userText) return;
+    setInput("");
+    const userMsg = { role: "user", id: Date.now(), content: userText };
+    setMessages(prev => [...prev, userMsg]);
+    setLoading(true);
+
+    // Check danger zone proactively
+    const danger = checkDangerZone(userText);
+
+    // Build conversation history
+    conversationRef.current = [...conversationRef.current, { role: "user", content: userText }];
+    if (conversationRef.current.length > 20) conversationRef.current = conversationRef.current.slice(-20);
+
+    try {
+      const context = buildContext(userText);
+      const systemPrompt = NNWANNE_SYSTEM + context;
+      // ── API ENDPOINT ──────────────────────────────────────────────
+      // In development: routes to local proxy (port 3001)
+      // In production: routes to the Railway-hosted proxy
+      const IS_DEV =
+        typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+      const ENDPOINT = IS_DEV
+        ? "http://localhost:3001/api/chat"
+        : "https://abia-emergency-center-production.up.railway.app/api/chat";
+
+      const response = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "llama3-70b-8192",
+          max_tokens: 1000,
+          system: systemPrompt,
+          messages: conversationRef.current,
+        }),
+      });
+
+      const data = await response.json();
+      const botText = data.content?.[0]?.text || "Nna, I had trouble connecting. Please try again or call 112 directly.";
+
+      conversationRef.current = [...conversationRef.current, { role: "assistant", content: botText }];
+
+      const isEmergency = /\b(help|emergency|danger|attack|fire|accident|robber|kidnap|bleeding|unconscious|stabbed|shot|rape)\b/i.test(userText);
+      const isWarning = danger !== null;
+      const newMsgId = Date.now() + 1;
+
+      setMessages(prev => [...prev, {
+        role: "bot", id: newMsgId,
+        content: botText,
+        type: isEmergency ? "emergency" : isWarning ? "warning" : "normal",
+        dangerAlert: danger || null,
+      }]);
+
+      speak(botText, newMsgId);
+    } catch (err) {
+      setMessages(prev => [...prev, {
+        role: "bot", id: Date.now() + 1,
+        content: "Connection error, Nna. But remember — for any emergency in Abia, call 112 immediately.",
+        type: "emergency"
+      }]);
+    }
+    setLoading(false);
+  }, [input, favs, speak]);
+
+  // ── HANDLE KEYDOWN ──
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  };
+
+  // ── ADD FAVOURITE ──
+  const addFav = () => {
+    if (!newFav.name || !newFav.phone) return;
+    setFavs(prev => [...prev, { ...newFav, id: Date.now() }]);
+    setNewFav({ name: "", phone: "", relation: "", icon: "👤" });
+    setAddFavForm(false);
+  };
+
+  // ── DELETE FAVOURITE ──
+  const deleteFav = (id) => setFavs(prev => prev.filter(f => f.id !== id));
+
+  // ── SOS ALL FAVOURITES ──
+  const sosAll = () => {
+    if (favs.length === 0) return;
+    const msg = `🚨 EMERGENCY SOS from Abia Emergency App. I need help immediately. Please call me now!`;
+    favs.forEach(f => {
+      window.open(`sms:${f.phone}?body=${encodeURIComponent(msg)}`);
+    });
+  };
+
+  const QUICK_PROMPTS = [
+    { label: "🚨 I'm in danger", text: "I am in danger right now. What should I do?", danger: true },
+    { label: "🗺 Directions Aba", text: "I need directions in Aba. I'm lost." },
+    { label: "🚌 Bus to Umuahia", text: "Which bus stop do I board to go to Umuahia from Aba?" },
+    { label: "⚠️ Danger zones", text: "Which areas in Abia should I avoid right now especially at night?" },
+    { label: "🏨 Hotels near me", text: "I need a hotel in Aba. What are the options?" },
+    { label: "⛽ Nearest petrol", text: "Where can I find a petrol station in Aba right now?" },
+    { label: "🍽️ Food nearby", text: "I'm hungry. What food joints are available in Aba?" },
+    { label: "🚔 Police station", text: "What is the closest police station to Ariaria, Aba?" },
+    { label: "🤱 Maternity hospital", text: "I need a maternity hospital or midwifery clinic in Abia urgently." },
+    { label: "🏥 Nearest hospital", text: "What hospitals are available near me in Abia?" },
+  ];
+
+  const RELATION_ICONS = { Family: "👨‍👩‍👧", Friend: "🤝", Doctor: "🏥", Neighbour: "🏠", Colleague: "💼", Other: "👤" };
+
+  return (
+    <>
+      <style>{BOT_STYLES}</style>
+
+      {/* FLOATING ACTION BUTTON */}
+      <button className={`nn-fab ${listening ? "listening" : ""}`} onClick={() => {
+        // Unlock Audio API on first tap — required for iOS/Android autoplay policy
+        if (!audioUnlocked) setAudioUnlocked(true);
+        setOpen(o => !o);
+        stopSpeaking();
+      }} title="Nnwanne AI Assistant">
+        {listening ? "🎙️" : open ? "✕" : "👮"}
+      </button>
+
+      {/* CHAT OVERLAY */}
+      {open && (
+        <div className="nn-overlay">
+          {/* HEADER */}
+          <div className="nn-header">
+            <div className="nn-avatar">
+              👮
+              <div className={`nn-avatar-ring ${speaking ? "speaking" : ""}`} />
+            </div>
+            <div className="nn-hdr-text">
+              <div className="nn-name">Nnwanne</div>
+              <div className="nn-status">
+                {listening ? "🔴 Listening…" : speaking ? "🔊 Speaking…" : loading ? "⚙️ Thinking…" : "● Ready · Abia AI Guide"}
+              </div>
+            </div>
+            <button className="nn-close" onClick={() => { setOpen(false); stopSpeaking(); }}>✕</button>
+          </div>
+
+          {/* TABS */}
+          <div className="nn-tabs">
+            <button className={`nn-tab ${tab === "chat" ? "active" : ""}`} onClick={() => setTab("chat")}>💬 Chat</button>
+            <button className={`nn-tab ${tab === "favs" ? "active" : ""}`} onClick={() => setTab("favs")}>⭐ Saved ({favs.length})</button>
+          </div>
+
+          {/* ── CHAT TAB ── */}
+          {tab === "chat" && (
+            <>
+              {/* VOICE WAVEFORM */}
+              {listening && (
+                <div className="nn-waveform">
+                  {[1,2,3,4,5].map(i => <div key={i} className="nn-wave-bar" style={{ height: `${Math.random() * 16 + 4}px` }} />)}
+                  <span style={{ fontSize: ".62rem", color: "rgba(244,67,54,.8)", marginLeft: 8, fontFamily: "Syne" }}>Listening…</span>
+                </div>
+              )}
+
+              {/* MESSAGES */}
+              <div className="nn-messages">
+                {messages.map((msg) => (
+                  <div key={msg.id}>
+                    {msg.dangerAlert && (
+                      <div className="nn-danger-alert">
+                        <div className="nn-danger-title">⚠️ DANGER ZONE ALERT — {msg.dangerAlert.risk} RISK</div>
+                        {msg.dangerAlert.note}
+                      </div>
+                    )}
+                    <div className={`nn-msg ${msg.role}`}>
+                      <div className={`nn-bubble ${msg.role === "user" ? "user" : msg.type === "emergency" ? "emergency" : msg.type === "warning" ? "warning" : "bot"}`}>
+                        {msg.content}
+
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {loading && (
+                  <div className="nn-msg">
+                    <div className="nn-bubble bot">
+                      <div className="nn-typing">
+                        <div className="nn-dot" /><div className="nn-dot" /><div className="nn-dot" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* QUICK PROMPTS */}
+              <div className="nn-quick-btns">
+                {QUICK_PROMPTS.map((q, i) => (
+                  <button key={i} className={`nn-qbtn ${q.danger ? "danger" : ""}`} onClick={() => { unlockAudio(); sendMessage(q.text); }}>
+                    {q.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* INPUT ROW */}
+              <div className="nn-input-row">
+                <button className={`nn-voice-btn ${listening ? "active" : ""}`} onClick={() => { unlockAudio(); toggleVoice(); }} title={listening ? "Stop" : "Voice input"}>
+                  {listening ? "⏹" : speaking ? "🔊" : "🎙️"}
+                </button>
+                <textarea
+                  ref={textareaRef}
+                  className="nn-textarea"
+                  placeholder="Ask Nnwanne anything about Abia…"
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  rows={1}
+                />
+                <button className="nn-send-btn" onClick={() => { unlockAudio(); sendMessage(); }} disabled={!input.trim() || loading}>➤</button>
+              </div>
+            </>
+          )}
+
+          {/* ── FAVOURITES TAB ── */}
+          {tab === "favs" && (
+            <div className="nn-favs-panel">
+              {favs.length > 0 && (
+                <button className="nn-sos-all-btn" onClick={sosAll}>
+                  🚨 SOS — ALERT ALL {favs.length} SAVED CONTACT{favs.length > 1 ? "S" : ""}
+                </button>
+              )}
+
+              {favs.length === 0 && !addFavForm && (
+                <div className="nn-empty-favs">
+                  <div style={{ fontSize: "2rem", marginBottom: 10 }}>⭐</div>
+                  No saved contacts yet.<br />
+                  Add your family, doctor, or trusted contacts below so Nnwanne can alert them in an emergency.
+                </div>
+              )}
+
+              {favs.map(f => (
+                <div key={f.id} className="nn-fav-card">
+                  <div className="nn-fav-ico">{f.icon}</div>
+                  <div>
+                    <div className="nn-fav-name">{f.name}</div>
+                    <div className="nn-fav-phone">{f.phone}</div>
+                    <div className="nn-fav-relation">{f.relation}</div>
+                  </div>
+                  <div className="nn-fav-actions">
+                    <button className="nn-fav-btn call" onClick={() => window.open(`tel:${f.phone}`)}>📞 Call</button>
+                    <button className="nn-fav-btn call" style={{ background: "rgba(0,100,255,.15)", borderColor: "rgba(100,149,237,.3)", color: "#c5d8ff" }}
+                      onClick={() => window.open(`sms:${f.phone}?body=${encodeURIComponent("🚨 Emergency! I need help. Please call me immediately.")}`)}>
+                      💬 SMS
+                    </button>
+                    <button className="nn-fav-btn del" onClick={() => deleteFav(f.id)}>🗑</button>
+                  </div>
+                </div>
+              ))}
+
+              {!addFavForm ? (
+                <button className="nn-add-submit" style={{ marginTop: 8 }} onClick={() => setAddFavForm(true)}>
+                  + ADD EMERGENCY CONTACT
+                </button>
+              ) : (
+                <div className="nn-add-fav-form">
+                  <div className="nn-add-title">Add Emergency Contact</div>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 7 }}>
+                    {Object.entries(RELATION_ICONS).map(([rel, ico]) => (
+                      <button key={rel} onClick={() => setNewFav(f => ({ ...f, relation: rel, icon: ico }))}
+                        style={{
+                          flex: 1, padding: "5px 2px", fontSize: ".65rem", fontFamily: "Syne", fontWeight: 600,
+                          background: newFav.relation === rel ? "rgba(0,200,83,.2)" : "rgba(255,255,255,.04)",
+                          border: `1px solid ${newFav.relation === rel ? "rgba(0,200,83,.5)" : "rgba(255,255,255,.1)"}`,
+                          borderRadius: 6, color: newFav.relation === rel ? "#00e676" : "rgba(255,255,255,.4)", cursor: "pointer"
+                        }}>
+                        {ico}
+                      </button>
+                    ))}
+                  </div>
+                  <input className="nn-add-input" placeholder="Name (e.g. Mama, Dr. Okafor)" value={newFav.name} onChange={e => setNewFav(f => ({ ...f, name: e.target.value }))} />
+                  <input className="nn-add-input" placeholder="Phone number (e.g. 08012345678)" type="tel" value={newFav.phone} onChange={e => setNewFav(f => ({ ...f, phone: e.target.value }))} />
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button className="nn-add-submit" onClick={addFav}>✓ SAVE CONTACT</button>
+                    <button className="nn-add-submit" style={{ background: "rgba(255,255,255,.07)", color: "rgba(255,255,255,.5)" }} onClick={() => setAddFavForm(false)}>Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              {/* QUICK DIAL SECTION */}
+              <div style={{ marginTop: 16, borderTop: "1px solid rgba(0,200,83,.1)", paddingTop: 12 }}>
+                <div style={{ fontSize: ".6rem", fontFamily: "Syne", fontWeight: 700, color: "rgba(0,200,83,.5)", letterSpacing: ".1em", marginBottom: 8 }}>ABIA STATE EMERGENCY HOTLINES</div>
+                {[
+                  { label: "General Emergency", num: "112", ico: "🚨" },
+                  { label: "Police", num: "199", ico: "🚔" },
+                  { label: "FRSC Road Safety", num: "122", ico: "🛣️" },
+                  { label: "NAPTIP (Anti-Trafficking)", num: "08039000001", ico: "🚫" },
+                  { label: "Legal Aid Council", num: "07030000000", ico: "⚖️" },
+                  { label: "NHRC Abia", num: "08035403780", ico: "🏛️" },
+                ].map((h, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: ".9rem" }}>{h.ico}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: ".63rem", color: "rgba(255,255,255,.4)", fontFamily: "Syne" }}>{h.label}</div>
+                      <div style={{ fontFamily: "JetBrains Mono", fontSize: ".72rem", color: "rgba(0,200,83,.8)" }}>{h.num}</div>
+                    </div>
+                    <button className="nn-fav-btn call" onClick={() => window.open(`tel:${h.num}`)}>📞</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+  // ── TEXT TO SPEECH (Browser TTS) ──
+  const utteranceRef2 = useRef(null);
+
+  const speak = useCallback((text, msgId) => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+
+    const cleanText = text
+      .replace(/[👮🚨🗺🚌⚠️🏨📞💬👤🔴🟡🟢•\*]/g, "")
+      .replace(/\n+/g, ". ")
+      .trim()
+      .slice(0, 500);
+    if (!cleanText) return;
+
+    const doSpeak = () => {
+      const utter = new SpeechSynthesisUtterance(cleanText);
+      utter.lang = "en-NG";
+      utter.rate = 1.05;
+      utter.pitch = 0.8;
+      utter.volume = 1;
+
+      const voices = window.speechSynthesis.getVoices();
+      const preferred =
+        voices.find(v => v.lang === "en-NG") ||
+        voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("nigerian")) ||
+        voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("male")) ||
+        voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("david")) ||
+        voices.find(v => v.lang.startsWith("en") && !v.name.toLowerCase().includes("female"));
+      if (preferred) utter.voice = preferred;
+
+      utter.onstart = () => setSpeaking(true);
+      utter.onend = () => setSpeaking(false);
+      utter.onerror = () => setSpeaking(false);
+      utteranceRef2.current = utter;
+      window.speechSynthesis.speak(utter);
+    };
+
+    // Voices may not be loaded yet on mobile
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length === 0) {
+      window.speechSynthesis.addEventListener("voiceschanged", doSpeak, { once: true });
+    } else {
+      doSpeak();
+    }
+  }, []);
+
+  const unlockAudio = useCallback(() => {
+    if (!audioUnlocked) {
+      // Unlock speech synthesis on mobile with silent utterance
+      const silent = new SpeechSynthesisUtterance(" ");
+      silent.volume = 0;
+      window.speechSynthesis?.speak(silent);
+      setAudioUnlocked(true);
+    }
+  }, [audioUnlocked]);
+
+    // ── STOP SPEAKING ──
+  const stopSpeaking = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setSpeaking(false);
+  };
+
+  // ── TOGGLE VOICE INPUT ──
+  const toggleVoice = () => {
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+    } else {
+      stopSpeaking();
+      recognitionRef.current?.start();
+      setListening(true);
+    }
+  };
+
+  // ── DETECT DANGER ZONE MENTION ──
+  const checkDangerZone = (text) => {
+    const lowerText = text.toLowerCase();
+    return ABIA_KNOWLEDGE.dangerZones.find(z =>
+      lowerText.includes(z.area.toLowerCase().split(",")[0].toLowerCase()) ||
+      z.area.toLowerCase().split(",").some(part => lowerText.includes(part.trim().toLowerCase()))
+    );
+  };
+
+  // ── BUILD CONTEXT STRING ──
+  const buildContext = (userMsg) => {
+    const ctx = [];
+    const lower = userMsg.toLowerCase();
+
+    if (lower.includes("hotel") || lower.includes("lodge") || lower.includes("stay")) {
+      ctx.push("HOTELS: " + ABIA_KNOWLEDGE.hotels.map(h => `${h.name} (${h.area}, ${h.vicinity}, ☎${h.phone})`).join("; "));
+    }
+    if (lower.includes("petrol") || lower.includes("fuel") || lower.includes("filling")) {
+      ctx.push("PETROL STATIONS: " + ABIA_KNOWLEDGE.petrolStations.map(p => `${p.name} - ${p.vicinity}`).join("; "));
+    }
+    if (lower.includes("maternity") || lower.includes("midwif") || lower.includes("delivery") || lower.includes("antenatal") || lower.includes("pregnant") || lower.includes("labour") || lower.includes("labor") || lower.includes("clinic") || lower.includes("gynae") || lower.includes("gynecol") || lower.includes("hospital") || lower.includes("baby") || lower.includes("birth")) {
+      const mat = ABIA_KNOWLEDGE.maternityHospitals;
+      ctx.push("MATERNITY HOSPITALS & CLINICS: " + mat.map(m => `${m.name} [${m.type}] - ${m.vicinity}, ☎${m.phone} | Services: ${m.services.join(", ")} ${m.emergency ? "| 🚨 24hr emergency" : ""}`).join("; "));
+    }
+    if (lower.includes("food") || lower.includes("eat") || lower.includes("restaurant") || lower.includes("hungry")) {
+      ctx.push("FOOD JOINTS: " + ABIA_KNOWLEDGE.foodJoints.map(f => `${f.name} (${f.type}) - ${f.vicinity}`).join("; "));
+    }
+    if (lower.includes("police") || lower.includes("station")) {
+      ctx.push("POLICE STATIONS: " + ABIA_KNOWLEDGE.policeStations.map(p => `${p.name}, ${p.area}, ☎${p.phone}`).join("; "));
+    }
+    if (lower.includes("bus") || lower.includes("keke") || lower.includes("transport") || lower.includes("how to get")) {
+      const aba = ABIA_KNOWLEDGE.busStops.aba.map(b => `${b.name} (${b.area}) → ${b.routes.join("/")} ${b.keke ? "[keke avail]" : ""}`).join("; ");
+      const umu = ABIA_KNOWLEDGE.busStops.umuahia.map(b => `${b.name} (${b.area}) → ${b.routes.join("/")} ${b.keke ? "[keke avail]" : ""}`).join("; ");
+      ctx.push(`ABA BUS STOPS: ${aba}`);
+      ctx.push(`UMUAHIA BUS STOPS: ${umu}`);
+    }
+    if (lower.includes("danger") || lower.includes("safe") || lower.includes("avoid") || lower.includes("risky")) {
+      ctx.push("DANGER ZONES: " + ABIA_KNOWLEDGE.dangerZones.map(d => `${d.area} [${d.risk}]: ${d.note}`).join("; "));
+    }
+    if (favs.length > 0) {
+      ctx.push("USER'S SAVED CONTACTS: " + favs.map(f => `${f.name} (${f.relation}) - ${f.phone}`).join("; "));
+    }
+
+    // Check street directions
+    Object.keys(ABIA_KNOWLEDGE.streetDirections).forEach(key => {
+      if (key.split(" ").some(word => lower.includes(word))) {
+        ctx.push(`ROUTE (${key}): ${ABIA_KNOWLEDGE.streetDirections[key]}`);
+      }
+    });
+
+    return ctx.length > 0 ? "\n\n[LOCAL DATA]\n" + ctx.join("\n") : "";
+  };
+
+  // ── SEND MESSAGE ──
+  const sendMessage = useCallback(async (text) => {
+    const userText = (text || input).trim();
+    if (!userText) return;
+    setInput("");
+    const userMsg = { role: "user", id: Date.now(), content: userText };
+    setMessages(prev => [...prev, userMsg]);
+    setLoading(true);
+
+    // Check danger zone proactively
+    const danger = checkDangerZone(userText);
+
+    // Build conversation history
+    conversationRef.current = [...conversationRef.current, { role: "user", content: userText }];
+    if (conversationRef.current.length > 20) conversationRef.current = conversationRef.current.slice(-20);
+
+    try {
+      const context = buildContext(userText);
+      const systemPrompt = NNWANNE_SYSTEM + context;
+      // ── API ENDPOINT ──────────────────────────────────────────────
+      // In development: routes to local proxy (port 3001)
+      // In production: routes to the Railway-hosted proxy
+      const IS_DEV =
+        typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+      const ENDPOINT = IS_DEV
+        ? "http://localhost:3001/api/chat"
+        : "https://abia-emergency-center-production.up.railway.app/api/chat";
+
+      const response = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "llama3-70b-8192",
+          max_tokens: 1000,
+          system: systemPrompt,
+          messages: conversationRef.current,
+        }),
+      });
+
+      const data = await response.json();
+      const botText = data.content?.[0]?.text || "Nna, I had trouble connecting. Please try again or call 112 directly.";
+
+      conversationRef.current = [...conversationRef.current, { role: "assistant", content: botText }];
+
+      const isEmergency = /\b(help|emergency|danger|attack|fire|accident|robber|kidnap|bleeding|unconscious|stabbed|shot|rape)\b/i.test(userText);
+      const isWarning = danger !== null;
+      const newMsgId = Date.now() + 1;
+
+      setMessages(prev => [...prev, {
+        role: "bot", id: newMsgId,
+        content: botText,
+        type: isEmergency ? "emergency" : isWarning ? "warning" : "normal",
+        dangerAlert: danger || null,
+      }]);
+
+      speak(botText, newMsgId);
+    } catch (err) {
+      setMessages(prev => [...prev, {
+        role: "bot", id: Date.now() + 1,
+        content: "Connection error, Nna. But remember — for any emergency in Abia, call 112 immediately.",
+        type: "emergency"
+      }]);
+    }
+    setLoading(false);
+  }, [input, favs, speak]);
+
+  // ── HANDLE KEYDOWN ──
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  };
+
+  // ── ADD FAVOURITE ──
+  const addFav = () => {
+    if (!newFav.name || !newFav.phone) return;
+    setFavs(prev => [...prev, { ...newFav, id: Date.now() }]);
+    setNewFav({ name: "", phone: "", relation: "", icon: "👤" });
+    setAddFavForm(false);
+  };
+
+  // ── DELETE FAVOURITE ──
+  const deleteFav = (id) => setFavs(prev => prev.filter(f => f.id !== id));
+
+  // ── SOS ALL FAVOURITES ──
+  const sosAll = () => {
+    if (favs.length === 0) return;
+    const msg = `🚨 EMERGENCY SOS from Abia Emergency App. I need help immediately. Please call me now!`;
+    favs.forEach(f => {
+      window.open(`sms:${f.phone}?body=${encodeURIComponent(msg)}`);
+    });
+  };
+
+  const QUICK_PROMPTS = [
+    { label: "🚨 I'm in danger", text: "I am in danger right now. What should I do?", danger: true },
+    { label: "🗺 Directions Aba", text: "I need directions in Aba. I'm lost." },
+    { label: "🚌 Bus to Umuahia", text: "Which bus stop do I board to go to Umuahia from Aba?" },
+    { label: "⚠️ Danger zones", text: "Which areas in Abia should I avoid right now especially at night?" },
+    { label: "🏨 Hotels near me", text: "I need a hotel in Aba. What are the options?" },
+    { label: "⛽ Nearest petrol", text: "Where can I find a petrol station in Aba right now?" },
+    { label: "🍽️ Food nearby", text: "I'm hungry. What food joints are available in Aba?" },
+    { label: "🚔 Police station", text: "What is the closest police station to Ariaria, Aba?" },
+    { label: "🤱 Maternity hospital", text: "I need a maternity hospital or midwifery clinic in Abia urgently." },
+    { label: "🏥 Nearest hospital", text: "What hospitals are available near me in Abia?" },
+  ];
+
+  const RELATION_ICONS = { Family: "👨‍👩‍👧", Friend: "🤝", Doctor: "🏥", Neighbour: "🏠", Colleague: "💼", Other: "👤" };
+
+  return (
+    <>
+      <style>{BOT_STYLES}</style>
+
+      {/* FLOATING ACTION BUTTON */}
+      <button className={`nn-fab ${listening ? "listening" : ""}`} onClick={() => {
+        // Unlock Audio API on first tap — required for iOS/Android autoplay policy
+        if (!audioUnlocked) setAudioUnlocked(true);
+        setOpen(o => !o);
+        stopSpeaking();
+      }} title="Nnwanne AI Assistant">
+        {listening ? "🎙️" : open ? "✕" : "👮"}
+      </button>
+
+      {/* CHAT OVERLAY */}
+      {open && (
+        <div className="nn-overlay">
+          {/* HEADER */}
+          <div className="nn-header">
+            <div className="nn-avatar">
+              👮
+              <div className={`nn-avatar-ring ${speaking ? "speaking" : ""}`} />
+            </div>
+            <div className="nn-hdr-text">
+              <div className="nn-name">Nnwanne</div>
+              <div className="nn-status">
+                {listening ? "🔴 Listening…" : speaking ? "🔊 Speaking…" : loading ? "⚙️ Thinking…" : "● Ready · Abia AI Guide"}
+              </div>
+            </div>
+            <button className="nn-close" onClick={() => { setOpen(false); stopSpeaking(); }}>✕</button>
+          </div>
+
+          {/* TABS */}
+          <div className="nn-tabs">
+            <button className={`nn-tab ${tab === "chat" ? "active" : ""}`} onClick={() => setTab("chat")}>💬 Chat</button>
+            <button className={`nn-tab ${tab === "favs" ? "active" : ""}`} onClick={() => setTab("favs")}>⭐ Saved ({favs.length})</button>
+          </div>
+
+          {/* ── CHAT TAB ── */}
+          {tab === "chat" && (
+            <>
+              {/* VOICE WAVEFORM */}
+              {listening && (
+                <div className="nn-waveform">
+                  {[1,2,3,4,5].map(i => <div key={i} className="nn-wave-bar" style={{ height: `${Math.random() * 16 + 4}px` }} />)}
+                  <span style={{ fontSize: ".62rem", color: "rgba(244,67,54,.8)", marginLeft: 8, fontFamily: "Syne" }}>Listening…</span>
+                </div>
+              )}
+
+              {/* MESSAGES */}
+              <div className="nn-messages">
+                {messages.map((msg) => (
+                  <div key={msg.id}>
+                    {msg.dangerAlert && (
+                      <div className="nn-danger-alert">
+                        <div className="nn-danger-title">⚠️ DANGER ZONE ALERT — {msg.dangerAlert.risk} RISK</div>
+                        {msg.dangerAlert.note}
+                      </div>
+                    )}
+                    <div className={`nn-msg ${msg.role}`}>
+                      <div className={`nn-bubble ${msg.role === "user" ? "user" : msg.type === "emergency" ? "emergency" : msg.type === "warning" ? "warning" : "bot"}`}>
+                        {msg.content}
+
                       </div>
                     </div>
                   </div>
