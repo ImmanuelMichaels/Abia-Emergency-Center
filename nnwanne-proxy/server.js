@@ -126,3 +126,41 @@ app.post("/api/speak", async (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ Server running on port ${PORT} using Groq + ElevenLabs`);
 });
+
+// ── GOOGLE PLACES NEARBY ENDPOINT ──
+app.post("/api/places", async (req, res) => {
+  try {
+    const { lat, lng, type, keyword } = req.body;
+    if (!lat || !lng) return res.status(400).json({ error: "Location required" });
+
+    const GOOGLE_KEY = process.env.GOOGLE_PLACES_API_KEY;
+    if (!GOOGLE_KEY) return res.status(500).json({ error: "Google Places API key not configured" });
+
+    const radius = 5000; // 5km radius
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}&keyword=${encodeURIComponent(keyword || "")}&key=${GOOGLE_KEY}`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
+      console.error("❌ Google Places error:", data.status, data.error_message);
+      return res.status(400).json({ error: data.error_message || data.status });
+    }
+
+    // Return top 5 results with essential info
+    const places = (data.results || []).slice(0, 5).map(p => ({
+      name: p.name,
+      address: p.vicinity,
+      rating: p.rating || null,
+      open_now: p.opening_hours?.open_now ?? null,
+      lat: p.geometry.location.lat,
+      lng: p.geometry.location.lng,
+      place_id: p.place_id,
+    }));
+
+    res.json({ places, status: data.status });
+  } catch (err) {
+    console.error("❌ Places error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});

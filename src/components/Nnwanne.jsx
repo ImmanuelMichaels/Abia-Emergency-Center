@@ -409,6 +409,10 @@ export default function Nnwanne() {
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
+  const [locationError, setLocationError] = useState(null);
+  const [nearbyPlaces, setNearbyPlaces] = useState([]);
+  const [placesLoading, setPlacesLoading] = useState(false);
   const [favs, setFavs] = useState(() => {
     try { return JSON.parse(localStorage.getItem("nnwanne_favs") || "[]"); } catch { return []; }
   });
@@ -494,6 +498,93 @@ export default function Nnwanne() {
   }, []);
 
 
+  // ── GPS LOCATION ──
+  const getLocation = useCallback(() => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject("Geolocation not supported on this device.");
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setUserLocation(loc);
+          resolve(loc);
+        },
+        (err) => {
+          const msg = err.code === 1
+            ? "Location access denied. Please allow location in your browser settings."
+            : "Could not get your location. Please try again.";
+          setLocationError(msg);
+          reject(msg);
+        },
+        { timeout: 10000, enableHighAccuracy: true }
+      );
+    });
+  }, []);
+
+  // ── NEARBY PLACES SEARCH ──
+  const PLACE_TYPES = {
+    hotel:   { type: "lodging",          keyword: "hotel lodge",        emoji: "🏨", label: "Hotels & Lodges" },
+    food:    { type: "restaurant",       keyword: "restaurant food",    emoji: "🍽️", label: "Restaurants" },
+    hospital:{ type: "hospital",         keyword: "hospital clinic",    emoji: "🏥", label: "Hospitals" },
+    pharmacy:{ type: "pharmacy",         keyword: "pharmacy chemist",   emoji: "💊", label: "Pharmacies" },
+    police:  { type: "police",           keyword: "police station",     emoji: "🚔", label: "Police Stations" },
+    petrol:  { type: "gas_station",      keyword: "petrol filling station", emoji: "⛽", label: "Petrol Stations" },
+    bank:    { type: "bank",             keyword: "bank ATM",           emoji: "🏧", label: "Banks & ATMs" },
+    atm:     { type: "atm",              keyword: "ATM cash",           emoji: "🏧", label: "ATMs" },
+  };
+
+  const detectPlaceIntent = (text) => {
+    const t = text.toLowerCase();
+    if (/(hotel|lodge|accommodation|stay|sleep|room)/i.test(t))    return "hotel";
+    if (/(eat|food|restaurant|hungry|dinner|lunch|breakfast)/i.test(t)) return "food";
+    if (/(pharmacy|chemist|medicine|drug store|panadol|drug)/i.test(t)) return "pharmacy";
+    if (/(hospital|clinic|doctor|sick|injured|emergency|medical)/i.test(t)) return "hospital";
+    if (/(police|station|security|robber|attack|stolen)/i.test(t)) return "police";
+    if (/(petrol|fuel|filling station|diesel|gas station)/i.test(t)) return "petrol";
+    if (/(bank|atm|cash|withdraw|money)/i.test(t))                 return "bank";
+    return null;
+  };
+
+  const searchNearbyPlaces = useCallback(async (intent, loc) => {
+    setPlacesLoading(true);
+    setNearbyPlaces([]);
+    try {
+      const IS_DEV = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      const BASE = IS_DEV ? "http://localhost:3001" : "https://abia-emergency-center-production.up.railway.app";
+      const cfg = PLACE_TYPES[intent];
+
+      const response = await fetch(`${BASE}/api/places`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lat: loc.lat, lng: loc.lng, type: cfg.type, keyword: cfg.keyword }),
+      });
+
+      const data = await response.json();
+      if (data.places && data.places.length > 0) {
+        setNearbyPlaces({ intent, cfg, places: data.places });
+        return data.places;
+      } else {
+        setNearbyPlaces({ intent, cfg, places: [] });
+        return [];
+      }
+    } catch (err) {
+      console.error("Places search error:", err);
+      return [];
+    } finally {
+      setPlacesLoading(false);
+    }
+  }, []);
+
+  const getDistanceKm = (lat1, lng1, lat2, lng2) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+    return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))).toFixed(1);
+  };
+
   // ── SEND MESSAGE ──
 
   const unlockAudio = useCallback(() => {
@@ -571,6 +662,93 @@ export default function Nnwanne() {
     return ctx.length > 0 ? "\n\n[LOCAL DATA]\n" + ctx.join("\n") : "";
   };
 
+  // ── GPS LOCATION ──
+  const getLocation = useCallback(() => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject("Geolocation not supported on this device.");
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setUserLocation(loc);
+          resolve(loc);
+        },
+        (err) => {
+          const msg = err.code === 1
+            ? "Location access denied. Please allow location in your browser settings."
+            : "Could not get your location. Please try again.";
+          setLocationError(msg);
+          reject(msg);
+        },
+        { timeout: 10000, enableHighAccuracy: true }
+      );
+    });
+  }, []);
+
+  // ── NEARBY PLACES SEARCH ──
+  const PLACE_TYPES = {
+    hotel:   { type: "lodging",          keyword: "hotel lodge",        emoji: "🏨", label: "Hotels & Lodges" },
+    food:    { type: "restaurant",       keyword: "restaurant food",    emoji: "🍽️", label: "Restaurants" },
+    hospital:{ type: "hospital",         keyword: "hospital clinic",    emoji: "🏥", label: "Hospitals" },
+    pharmacy:{ type: "pharmacy",         keyword: "pharmacy chemist",   emoji: "💊", label: "Pharmacies" },
+    police:  { type: "police",           keyword: "police station",     emoji: "🚔", label: "Police Stations" },
+    petrol:  { type: "gas_station",      keyword: "petrol filling station", emoji: "⛽", label: "Petrol Stations" },
+    bank:    { type: "bank",             keyword: "bank ATM",           emoji: "🏧", label: "Banks & ATMs" },
+    atm:     { type: "atm",              keyword: "ATM cash",           emoji: "🏧", label: "ATMs" },
+  };
+
+  const detectPlaceIntent = (text) => {
+    const t = text.toLowerCase();
+    if (/(hotel|lodge|accommodation|stay|sleep|room)/i.test(t))    return "hotel";
+    if (/(eat|food|restaurant|hungry|dinner|lunch|breakfast)/i.test(t)) return "food";
+    if (/(pharmacy|chemist|medicine|drug store|panadol|drug)/i.test(t)) return "pharmacy";
+    if (/(hospital|clinic|doctor|sick|injured|emergency|medical)/i.test(t)) return "hospital";
+    if (/(police|station|security|robber|attack|stolen)/i.test(t)) return "police";
+    if (/(petrol|fuel|filling station|diesel|gas station)/i.test(t)) return "petrol";
+    if (/(bank|atm|cash|withdraw|money)/i.test(t))                 return "bank";
+    return null;
+  };
+
+  const searchNearbyPlaces = useCallback(async (intent, loc) => {
+    setPlacesLoading(true);
+    setNearbyPlaces([]);
+    try {
+      const IS_DEV = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      const BASE = IS_DEV ? "http://localhost:3001" : "https://abia-emergency-center-production.up.railway.app";
+      const cfg = PLACE_TYPES[intent];
+
+      const response = await fetch(`${BASE}/api/places`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lat: loc.lat, lng: loc.lng, type: cfg.type, keyword: cfg.keyword }),
+      });
+
+      const data = await response.json();
+      if (data.places && data.places.length > 0) {
+        setNearbyPlaces({ intent, cfg, places: data.places });
+        return data.places;
+      } else {
+        setNearbyPlaces({ intent, cfg, places: [] });
+        return [];
+      }
+    } catch (err) {
+      console.error("Places search error:", err);
+      return [];
+    } finally {
+      setPlacesLoading(false);
+    }
+  }, []);
+
+  const getDistanceKm = (lat1, lng1, lat2, lng2) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+    return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))).toFixed(1);
+  };
+
   // ── SEND MESSAGE ──
   const sendMessage = useCallback(async (text) => {
     const userText = (text || input).trim();
@@ -587,8 +765,35 @@ export default function Nnwanne() {
     conversationRef.current = [...conversationRef.current, { role: "user", content: userText }];
     if (conversationRef.current.length > 20) conversationRef.current = conversationRef.current.slice(-20);
 
+    // ── GPS PLACE DETECTION ──
+    const placeIntent = detectPlaceIntent(userText);
+    let gpsContext = "";
+    let fetchedPlaces = [];
+
+    if (placeIntent) {
+      try {
+        const loc = userLocation || await getLocation();
+        fetchedPlaces = await searchNearbyPlaces(placeIntent, loc);
+        if (fetchedPlaces.length > 0) {
+          const cfg = PLACE_TYPES[placeIntent];
+          gpsContext = `\n\n[GPS - REAL NEARBY ${cfg.label.toUpperCase()} WITHIN 5KM]\n` +
+            fetchedPlaces.map((p, i) => {
+              const dist = getDistanceKm(loc.lat, loc.lng, p.lat, p.lng);
+              const open = p.open_now === true ? "✅ Open now" : p.open_now === false ? "❌ Closed" : "";
+              const rating = p.rating ? `⭐${p.rating}` : "";
+              return `${i+1}. ${p.name} — ${p.address} ${rating} ${open} (${dist}km away)`;
+            }).join("\n") +
+            "\nTell the user these exact real places with distances. Be helpful and specific.";
+        } else {
+          gpsContext = `\n\n[GPS] No ${PLACE_TYPES[placeIntent].label} found within 5km of user's location.`;
+        }
+      } catch (locErr) {
+        gpsContext = `\n\n[GPS] Could not get location: ${locErr}. Tell user to enable location access.`;
+      }
+    }
+
     try {
-      const context = buildContext(userText);
+      const context = buildContext(userText) + gpsContext;
       const systemPrompt = NNWANNE_SYSTEM + context;
       // ── API ENDPOINT ──────────────────────────────────────────────
       // In development: routes to local proxy (port 3001)
@@ -759,8 +964,68 @@ export default function Nnwanne() {
                 <div ref={messagesEndRef} />
               </div>
 
+              {/* NEARBY PLACES CARD */}
+              {placesLoading && (
+                <div style={{ padding: "10px 16px", background: "rgba(0,200,83,.06)", border: "1px solid rgba(0,200,83,.15)", borderRadius: 10, margin: "8px 0", fontSize: ".72rem", color: "rgba(0,200,83,.8)", fontFamily: "Syne", fontWeight: 700, letterSpacing: ".05em" }}>
+                  📍 Finding nearby places…
+                </div>
+              )}
+              {nearbyPlaces?.places?.length > 0 && (
+                <div style={{ background: "rgba(0,200,83,.05)", border: "1px solid rgba(0,200,83,.2)", borderRadius: 12, margin: "8px 0", overflow: "hidden" }}>
+                  <div style={{ padding: "8px 14px", background: "rgba(0,200,83,.1)", fontSize: ".65rem", fontFamily: "Syne", fontWeight: 700, letterSpacing: ".08em", color: "rgba(0,200,83,.9)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>{nearbyPlaces.cfg?.emoji} NEARBY {nearbyPlaces.cfg?.label?.toUpperCase()}</span>
+                    <button onClick={() => setNearbyPlaces([])} style={{ background: "none", border: "none", color: "rgba(255,255,255,.3)", cursor: "pointer", fontSize: ".8rem" }}>✕</button>
+                  </div>
+                  {nearbyPlaces.places.map((p, i) => (
+                    <div key={i} style={{ padding: "8px 14px", borderBottom: "1px solid rgba(0,200,83,.08)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: ".72rem", fontWeight: 700, color: "rgba(255,255,255,.9)", fontFamily: "Syne" }}>{p.name}</div>
+                        <div style={{ fontSize: ".62rem", color: "rgba(255,255,255,.45)", marginTop: 2 }}>{p.address}</div>
+                        <div style={{ display: "flex", gap: 8, marginTop: 3 }}>
+                          {p.rating && <span style={{ fontSize: ".6rem", color: "#ffd740" }}>⭐ {p.rating}</span>}
+                          {p.open_now === true && <span style={{ fontSize: ".6rem", color: "#00e676" }}>✅ Open</span>}
+                          {p.open_now === false && <span style={{ fontSize: ".6rem", color: "#ff5252" }}>❌ Closed</span>}
+                        </div>
+                      </div>
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontSize: ".6rem", background: "rgba(0,200,83,.15)", border: "1px solid rgba(0,200,83,.3)", borderRadius: 6, padding: "4px 8px", color: "rgba(0,200,83,.9)", textDecoration: "none", fontFamily: "Syne", fontWeight: 700, whiteSpace: "nowrap" }}
+                      >
+                        🗺 Directions
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {nearbyPlaces?.places?.length === 0 && nearbyPlaces?.cfg && !placesLoading && (
+                <div style={{ padding: "10px 16px", background: "rgba(255,82,82,.05)", border: "1px solid rgba(255,82,82,.15)", borderRadius: 10, margin: "8px 0", fontSize: ".7rem", color: "rgba(255,255,255,.5)", fontFamily: "Syne" }}>
+                  📍 No {nearbyPlaces.cfg.label} found within 5km of your location.
+                </div>
+              )}
+
               {/* QUICK PROMPTS */}
               <div className="nn-quick-btns">
+                {/* GPS STATUS */}
+                {!userLocation && (
+                  <button
+                    onClick={async () => { try { await getLocation(); } catch(e) {} }}
+                    style={{ width: "100%", marginBottom: 6, padding: "6px 10px", background: "rgba(0,200,83,.08)", border: "1px dashed rgba(0,200,83,.3)", borderRadius: 8, color: "rgba(0,200,83,.7)", fontSize: ".62rem", fontFamily: "Syne", fontWeight: 700, cursor: "pointer", letterSpacing: ".05em" }}
+                  >
+                    📍 Enable location for nearby places
+                  </button>
+                )}
+                {userLocation && (
+                  <div style={{ fontSize: ".58rem", color: "rgba(0,200,83,.5)", fontFamily: "Syne", marginBottom: 4, letterSpacing: ".05em" }}>
+                    📍 Location active — ask me for nearby hotels, food, hospitals & more
+                  </div>
+                )}
+                {locationError && (
+                  <div style={{ fontSize: ".58rem", color: "rgba(255,82,82,.6)", fontFamily: "Syne", marginBottom: 4 }}>
+                    ⚠️ {locationError}
+                  </div>
+                )}
                 {QUICK_PROMPTS.map((q, i) => (
                   <button key={i} className={`nn-qbtn ${q.danger ? "danger" : ""}`} onClick={() => { unlockAudio(); sendMessage(q.text); }}>
                     {q.label}
