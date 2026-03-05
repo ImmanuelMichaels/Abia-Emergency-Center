@@ -450,7 +450,50 @@ export default function Nnwanne() {
     recognitionRef.current = rec;
   }, []);
 
-  // ── TEXT TO SPEECH (ElevenLabs) ──
+  // ── TEXT TO SPEECH (Browser TTS) ──
+  const utteranceRef = useRef(null);
+
+  const speak = useCallback((text) => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+
+    const cleanText = text
+      .replace(/[👮🚨🗺🚌⚠️🏨📞💬👤🔴🟡🟢•\*]/g, "")
+      .replace(/\n+/g, ". ")
+      .trim()
+      .slice(0, 500);
+    if (!cleanText) return;
+
+    const doSpeak = () => {
+      const utter = new SpeechSynthesisUtterance(cleanText);
+      utter.lang = "en-NG";
+      utter.rate = 1.05;
+      utter.pitch = 0.8;
+      utter.volume = 1;
+
+      const voices = window.speechSynthesis.getVoices();
+      const preferred =
+        voices.find(v => v.lang === "en-NG") ||
+        voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("nigerian")) ||
+        voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("male")) ||
+        voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("david")) ||
+        voices.find(v => v.lang.startsWith("en") && !v.name.toLowerCase().includes("female"));
+      if (preferred) utter.voice = preferred;
+
+      utter.onstart = () => setSpeaking(true);
+      utter.onend = () => setSpeaking(false);
+      utter.onerror = () => setSpeaking(false);
+      utteranceRef.current = utter;
+      window.speechSynthesis.speak(utter);
+    };
+
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length === 0) {
+      window.speechSynthesis.addEventListener("voiceschanged", doSpeak, { once: true });
+    } else {
+      doSpeak();
+    }
+  }, []);
 
   const unlockAudio = useCallback(() => {
     if (!audioUnlocked) {
@@ -461,14 +504,9 @@ export default function Nnwanne() {
     }
   }, [audioUnlocked]);
 
-
-
     // ── STOP SPEAKING ──
   const stopSpeaking = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
+    window.speechSynthesis?.cancel();
     setSpeaking(false);
   };
 
@@ -594,7 +632,7 @@ export default function Nnwanne() {
         dangerAlert: danger || null,
       }]);
 
-      speak(botText, newMsgId);
+      speak(botText);
     } catch (err) {
       setMessages(prev => [...prev, {
         role: "bot", id: Date.now() + 1,
@@ -707,29 +745,6 @@ export default function Nnwanne() {
                     <div className={`nn-msg ${msg.role}`}>
                       <div className={`nn-bubble ${msg.role === "user" ? "user" : msg.type === "emergency" ? "emergency" : msg.type === "warning" ? "warning" : "bot"}`}>
                         {msg.content}
-
-                        {msg.role !== "user" && msg.audioUrl && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const audio = new Audio(msg.audioUrl);
-                              audio.play().catch(() => {});
-                              setSpeaking(true);
-                              audio.onended = () => setSpeaking(false);
-                            }}
-                            style={{
-                              marginTop: 8, display: "inline-flex", alignItems: "center",
-                              gap: 5, cursor: "pointer", fontSize: ".65rem",
-                              color: "rgba(0,200,83,.8)", fontFamily: "Syne",
-                              fontWeight: 700, letterSpacing: ".05em",
-                              background: "rgba(0,200,83,.08)",
-                              border: "1px solid rgba(0,200,83,.2)",
-                              borderRadius: 8, padding: "4px 10px"
-                            }}
-                          >
-                            🔊 Tap to hear
-                          </button>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -866,66 +881,7 @@ export default function Nnwanne() {
       )}
     </>
   );
-  // ── TEXT TO SPEECH (ElevenLabs) ──
-  const audioRef = useRef(null);
 
-  const speak = useCallback(async (text, msgId) => {
-    try {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        URL.revokeObjectURL(audioRef.current.src);
-        audioRef.current = null;
-      }
-      setSpeaking(true);
-
-      const cleanText = text
-        .replace(/[👮🚨🗺🚌⚠️🏨📞💬👤🔴🟡🟢•\*]/g, "")
-        .replace(/\n+/g, ". ")
-        .trim()
-        .slice(0, 400);
-      if (!cleanText) { setSpeaking(false); return; }
-
-      const IS_DEV = typeof window !== "undefined" &&
-        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-
-      const SPEAK_ENDPOINT = IS_DEV
-        ? "http://localhost:3001/api/speak"
-        : "https://abia-emergency-center-production.up.railway.app/api/speak";
-
-      const response = await fetch(SPEAK_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: cleanText }),
-      });
-
-      if (!response.ok) {
-        console.error("ElevenLabs error:", response.status);
-        setSpeaking(false);
-        return;
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-
-      // Store on message for mobile tap-to-play
-      if (typeof msgId !== "undefined") {
-        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, audioUrl: url } : m));
-      }
-
-      const audio = new Audio(url);
-      audioRef.current = audio;
-
-      audio.onended = () => { setSpeaking(false); audioRef.current = null; };
-      audio.onerror = () => { setSpeaking(false); audioRef.current = null; };
-
-      // Try auto-play (works on desktop), fallback to tap-to-play on mobile
-      audio.play().catch(() => { setSpeaking(false); });
-
-    } catch (err) {
-      console.error("Speak error:", err);
-      setSpeaking(false);
-    }
-  }, []);
 
   const unlockAudio = useCallback(() => {
     if (!audioUnlocked) setAudioUnlocked(true);
@@ -933,10 +889,7 @@ export default function Nnwanne() {
 
     // ── STOP SPEAKING ──
   const stopSpeaking = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
+    window.speechSynthesis?.cancel();
     setSpeaking(false);
   };
 
@@ -1062,7 +1015,7 @@ export default function Nnwanne() {
         dangerAlert: danger || null,
       }]);
 
-      speak(botText, newMsgId);
+      speak(botText);
     } catch (err) {
       setMessages(prev => [...prev, {
         role: "bot", id: Date.now() + 1,
@@ -1370,10 +1323,7 @@ export default function Nnwanne() {
 
     // ── STOP SPEAKING ──
   const stopSpeaking = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
+    window.speechSynthesis?.cancel();
     setSpeaking(false);
   };
 
@@ -1499,7 +1449,7 @@ export default function Nnwanne() {
         dangerAlert: danger || null,
       }]);
 
-      speak(botText, newMsgId);
+      speak(botText);
     } catch (err) {
       setMessages(prev => [...prev, {
         role: "bot", id: Date.now() + 1,
