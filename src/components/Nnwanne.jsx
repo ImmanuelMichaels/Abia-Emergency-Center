@@ -588,7 +588,13 @@ export default function Nnwanne() {
   // ── SEND MESSAGE ──
 
   const unlockAudio = useCallback(() => {
-    if (!audioUnlocked) setAudioUnlocked(true);
+    if (!audioUnlocked && window.speechSynthesis) {
+      const silent = new SpeechSynthesisUtterance(" ");
+      silent.volume = 0;
+      silent.rate = 1;
+      window.speechSynthesis.speak(silent);
+      setAudioUnlocked(true);
+    }
   }, [audioUnlocked]);
 
     // ── STOP SPEAKING ──
@@ -748,6 +754,10 @@ export default function Nnwanne() {
       }]);
 
       speak(botText);
+      // Store text on message for mobile tap-to-speak
+      setMessages(prev => prev.map((m, idx) =>
+        idx === prev.length - 1 ? { ...m, speakText: botText } : m
+      ));
     } catch (err) {
       setMessages(prev => [...prev, {
         role: "bot", id: Date.now() + 1,
@@ -806,7 +816,12 @@ export default function Nnwanne() {
       {/* FLOATING ACTION BUTTON */}
       <button className={`nn-fab ${listening ? "listening" : ""}`} onClick={() => {
         // Unlock Audio API on first tap — required for iOS/Android autoplay policy
-        if (!audioUnlocked) setAudioUnlocked(true);
+        if (!audioUnlocked && window.speechSynthesis) {
+          const silent = new SpeechSynthesisUtterance(" ");
+          silent.volume = 0;
+          window.speechSynthesis.speak(silent);
+          setAudioUnlocked(true);
+        }
         setOpen(o => !o);
         stopSpeaking();
       }} title="Nnwanne AI Assistant">
@@ -861,6 +876,22 @@ export default function Nnwanne() {
                     <div className={`nn-msg ${msg.role}`}>
                       <div className={`nn-bubble ${msg.role === "user" ? "user" : msg.type === "emergency" ? "emergency" : msg.type === "warning" ? "warning" : "bot"}`}>
                         {msg.content}
+                        {msg.role !== "user" && msg.speakText && (
+                          <button
+                            onClick={() => speak(msg.speakText)}
+                            style={{
+                              marginTop: 7, display: "inline-flex", alignItems: "center",
+                              gap: 5, cursor: "pointer", fontSize: ".62rem",
+                              color: speaking ? "rgba(0,200,83,1)" : "rgba(0,200,83,.7)",
+                              fontFamily: "Syne", fontWeight: 700, letterSpacing: ".05em",
+                              background: "rgba(0,200,83,.07)",
+                              border: "1px solid rgba(0,200,83,.2)",
+                              borderRadius: 8, padding: "4px 10px"
+                            }}
+                          >
+                            {speaking ? "🔊 Speaking…" : "🔊 Tap to hear"}
+                          </button>
+                        )}
 
                       </div>
                     </div>
