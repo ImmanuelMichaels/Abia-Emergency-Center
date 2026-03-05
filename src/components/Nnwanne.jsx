@@ -450,9 +450,6 @@ export default function Nnwanne() {
     recognitionRef.current = rec;
   }, []);
 
-  // ── TEXT TO SPEECH (Browser TTS) ──
-  // ── TEXT TO SPEECH (Browser TTS) ──
-  const utteranceRef = useRef(null);
 
   const speak = useCallback((text) => {
     if (!window.speechSynthesis) return;
