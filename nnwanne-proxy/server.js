@@ -1,37 +1,52 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const rateLimit = require("express-rate-limit");
-const helmet = require("helmet");
+// express-rate-limit loaded conditionally below
 
 const app = express();
 
 // ═══════════════════════════════════════════════════════════════
-//  ENVIRONMENT VALIDATION — fail fast if secrets are missing
+//  ENVIRONMENT VALIDATION
+//  Hard-required: GROQ_API_KEY (core feature, nothing works without it)
+//  Soft-required: others — warn loudly but don't crash so Railway
+//  still boots while you add the remaining vars in the dashboard.
 // ═══════════════════════════════════════════════════════════════
-const REQUIRED_ENV = ["GROQ_API_KEY", "ELEVENLABS_API_KEY", "ELEVENLABS_VOICE_ID", "API_SECRET"];
-REQUIRED_ENV.forEach((key) => {
-  if (!process.env[key]) {
-    console.error(`❌ FATAL: Missing required env var: ${key}`);
-    process.exit(1);
-  }
+const PORT                = process.env.PORT || 3001;
+const GROQ_API_KEY        = process.env.GROQ_API_KEY;
+const ELEVENLABS_API_KEY  = process.env.ELEVENLABS_API_KEY;
+const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "nw6EIXCsQ89uJMjytYb8"; // fallback to original
+const API_SECRET          = process.env.API_SECRET; // shared secret — see .env.example
+
+// Crash only if Groq key is absent — everything else degrades gracefully
+if (!GROQ_API_KEY) {
+  console.error("❌ FATAL: GROQ_API_KEY is not set. Server cannot start.");
+  process.exit(1);
+}
+
+// Warn about missing-but-non-fatal vars
+const SOFT_VARS = { ELEVENLABS_API_KEY, API_SECRET };
+Object.entries(SOFT_VARS).forEach(([key, val]) => {
+  if (!val) console.warn(`⚠️  WARNING: ${key} is not set — related features will be disabled.`);
 });
 
-const PORT               = process.env.PORT || 3001;
-const GROQ_API_KEY       = process.env.GROQ_API_KEY;
-const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID; // moved out of source
-const API_SECRET         = process.env.API_SECRET;           // shared secret between client and server
-
-console.log("🔑 Groq Key:       ", GROQ_API_KEY        ? "Loaded ✅" : "MISSING ❌");
-console.log("🔑 ElevenLabs Key: ", ELEVENLABS_API_KEY  ? "Loaded ✅" : "MISSING ❌");
-console.log("🔑 API Secret:     ", API_SECRET           ? "Loaded ✅" : "MISSING ❌");
+console.log("🔑 Groq Key:        ", GROQ_API_KEY       ? "Loaded ✅" : "MISSING ❌");
+console.log("🔑 ElevenLabs Key:  ", ELEVENLABS_API_KEY  ? "Loaded ✅" : "MISSING ❌");
+console.log("🔑 ElevenLabs Voice:", ELEVENLABS_VOICE_ID ? "Loaded ✅" : "MISSING ❌");
+console.log("🔑 API Secret:      ", API_SECRET          ? "Loaded ✅" : "NOT SET ⚠️  (secret enforcement disabled until set)");
 
 // ═══════════════════════════════════════════════════════════════
-//  SECURITY HEADERS (helmet)
+//  SECURITY HEADERS — helmet is optional
+//  Already in your package.json. If not yet installed, server
+//  still runs safely; headers kick in after next npm install.
 // ═══════════════════════════════════════════════════════════════
-app.use(helmet());
-app.use(helmet.referrerPolicy({ policy: "strict-origin-when-cross-origin" }));
+try {
+  const helmet = require("helmet");
+  app.use(helmet());
+  app.use(helmet.referrerPolicy({ policy: "strict-origin-when-cross-origin" }));
+  console.log("🛡️  Helmet security headers: active ✅");
+} catch {
+  console.warn("⚠️  helmet not installed — security headers skipped. Run: npm install helmet");
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  CORS — strict allow-list only
@@ -57,34 +72,43 @@ app.use(cors({
 app.use(express.json({ limit: "50kb" }));
 
 // ═══════════════════════════════════════════════════════════════
-//  RATE LIMITERS
+//  RATE LIMITERS — optional, active only if express-rate-limit is installed
 // ═══════════════════════════════════════════════════════════════
-// Global limiter — 120 req / min per IP across all routes
-const globalLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 120,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many requests. Please slow down." },
-});
+let globalLimiter = (req, res, next) => next(); // no-op fallback
+let aiLimiter     = (req, res, next) => next();
+let ttsLimiter    = (req, res, next) => next();
 
-// Tight limiter for expensive AI endpoints
-const aiLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 20,   // 20 AI calls per minute per IP
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "AI rate limit exceeded. Wait 60 seconds and try again." },
-});
+try {
+  const rateLimit = require("express-rate-limit");
 
-// Tight limiter for TTS (ElevenLabs costs money per char)
-const ttsLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "TTS rate limit exceeded. Wait 60 seconds and try again." },
-});
+  globalLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 120,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests. Please slow down." },
+  });
+
+  aiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "AI rate limit exceeded. Wait 60 seconds and try again." },
+  });
+
+  ttsLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "TTS rate limit exceeded. Wait 60 seconds and try again." },
+  });
+
+  console.log("🚦 Rate limiting: active ✅");
+} catch {
+  console.warn("⚠️  express-rate-limit not installed — rate limiting skipped. Run: npm install express-rate-limit");
+}
 
 app.use(globalLimiter);
 
@@ -95,6 +119,12 @@ app.use(globalLimiter);
 //  auth system — combine with rate limiting for defence-in-depth.
 // ═══════════════════════════════════════════════════════════════
 function requireSecret(req, res, next) {
+  // If API_SECRET is not yet configured, skip enforcement but warn loudly.
+  // Set it in Railway env vars as soon as possible.
+  if (!API_SECRET) {
+    console.warn("WARNING: API_SECRET not set — secret check skipped. Set it in Railway env vars!");
+    return next();
+  }
   const provided = req.headers["x-api-secret"];
   if (!provided || provided !== API_SECRET) {
     return res.status(403).json({ error: "Forbidden" });
