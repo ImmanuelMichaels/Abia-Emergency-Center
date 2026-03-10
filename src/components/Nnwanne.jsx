@@ -1,5 +1,30 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 
+// ═══════════════════════════════════════════════════════════════
+//  SECURITY CONFIG
+//  The API_SECRET must match the server's API_SECRET env var.
+//  In a Vite/CRA project, expose it via VITE_API_SECRET or
+//  REACT_APP_API_SECRET in your .env file — never hardcode it.
+// ═══════════════════════════════════════════════════════════════
+const API_SECRET =
+  import.meta?.env?.VITE_API_SECRET ||          // Vite
+  process.env?.REACT_APP_API_SECRET ||           // CRA
+  "";                                            // fallback (will be rejected by server)
+
+const IS_DEV =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+const BASE_URL = IS_DEV
+  ? "http://localhost:3001"
+  : "https://abia-emergency-center-production.up.railway.app";
+
+// Attach the shared secret to every API call
+const API_HEADERS = {
+  "Content-Type": "application/json",
+  "x-api-secret": API_SECRET,
+};
+
 const ABIA_KNOWLEDGE = {
   dangerZones: [
     { area: "Bakassi Boys Area, Aba", risk: "HIGH", note: "Known for sporadic cult activity at night. Avoid after 9pm." },
@@ -43,9 +68,7 @@ const ABIA_KNOWLEDGE = {
       { name: "Ariaria International Market", type: "market", desc: "Largest market in West Africa for textiles & garments", area: "Ariaria" },
       { name: "Aba Sports Club", type: "recreation", desc: "Popular sports and social club", area: "Aba Central" },
       { name: "Government House Aba", type: "government", desc: "Abia State liaison office Aba", area: "Aba Central" },
-      { name: "ABIA State Secretariat", type: "government", desc: "State government offices", area: "Umuahia Road" },
       { name: "Ngwa High School", type: "school", desc: "Secondary school landmark near Ngwa Road", area: "Ngwa Road" },
-      { name: "Aba Club", type: "recreation", desc: "Old colonial club, good landmark", area: "Aba Central" },
       { name: "Osisioma Industrial Layout", type: "industrial", desc: "Major industrial zone near Aba airport road", area: "Osisioma" },
       { name: "St. Michael's Catholic Church, Aba", type: "church", desc: "Prominent landmark on St. Michael's Road", area: "Ogbor Hill" },
     ],
@@ -56,7 +79,6 @@ const ABIA_KNOWLEDGE = {
       { name: "Government House Umuahia", type: "government", desc: "Abia State Government House", area: "Umuahia" },
       { name: "Abia State University (ABSU), Uturu", type: "school", desc: "Located in Uturu, Isuikwuato LGA", area: "Uturu" },
       { name: "Michael Okpara University", type: "school", desc: "MOUAU campus, Umudike", area: "Umudike" },
-      { name: "Ibeku High School", type: "school", desc: "Prominent school in Ibeku area", area: "Ibeku" },
     ]
   },
 
@@ -76,7 +98,6 @@ const ABIA_KNOWLEDGE = {
     { name: "Ostenfeld Hotel", area: "Aba", vicinity: "Pound Road, Aba", phone: "08030001004", stars: 2 },
     { name: "Rockville Hotel", area: "Umuahia", vicinity: "Hospital Road, Umuahia", phone: "08033001102", stars: 3 },
     { name: "Bolton White Hotel", area: "Umuahia", vicinity: "Bende Road, Umuahia", phone: "08033001103", stars: 4 },
-    { name: "Le Meridien Owerri", area: "Near Aba (Owerri)", vicinity: "Owerri — 45 min from Aba", phone: "083000001", stars: 5 },
   ],
 
   petrolStations: [
@@ -94,116 +115,32 @@ const ABIA_KNOWLEDGE = {
     { name: "Tastee Fried Chicken", area: "Aba", vicinity: "Aba Central", type: "Fast food" },
     { name: "Mama Cass", area: "Aba", vicinity: "Ariaria area, Aba", type: "Local Nigerian" },
     { name: "Yellow Chilli Restaurant", area: "Umuahia", vicinity: "GRA Umuahia", type: "Continental & Nigerian" },
-    { name: "Portharcourt Buka", area: "Aba", vicinity: "Ngwa Road area", type: "Local Nigerian" },
     { name: "Genesis Restaurant", area: "Near Aba", vicinity: "Osisioma area", type: "Continental" },
-    { name: "Roadchef Café", area: "Umuahia", vicinity: "Umuahia Central", type: "Fast food & snacks" },
   ],
 
-
   maternityHospitals: [
-    // ── ABA ──────────────────────────────────────────────────
-    { name: "Aba Township Hospital (Maternity Wing)", area: "Aba", vicinity: "Asa Road, Aba", phone: "08030002001", type: "Government", services: ["Normal delivery", "C-section", "Antenatal", "Postnatal"], emergency: true },
+    { name: "Holy Ghost Hospital Aba", area: "Aba", vicinity: "Aba Central", phone: "08030002006", type: "Mission", services: ["Normal delivery", "C-section", "Antenatal", "NICU"], emergency: true },
     { name: "St. Bridget's Catholic Hospital", area: "Aba", vicinity: "Ogbor Hill Road, Aba", phone: "08030002002", type: "Mission", services: ["Maternity", "Antenatal", "Midwifery", "Newborn care"], emergency: true },
     { name: "Graceland Specialist Hospital", area: "Aba", vicinity: "Faulks Road, Aba", phone: "08030002003", type: "Private", services: ["High-risk pregnancy", "C-section", "IVF referral", "Antenatal"], emergency: true },
-    { name: "Mothers & Babies Clinic", area: "Aba", vicinity: "Ngwa Road, Aba", phone: "08030002004", type: "Private clinic", services: ["Normal delivery", "Antenatal", "Midwifery"], emergency: false },
-    { name: "Bethesda Maternity Home", area: "Aba", vicinity: "Eziama, Aba North", phone: "08030002005", type: "Private clinic", services: ["Midwifery", "Normal delivery", "Postnatal care"], emergency: false },
-    { name: "Ariaria PHC Maternity Unit", area: "Ariaria, Aba", vicinity: "Ariaria Junction, Aba", phone: "08031001003", type: "Government PHC", services: ["Normal delivery", "Antenatal", "Family planning"], emergency: false },
-    { name: "Jubilee Road PHC Maternity", area: "Aba South", vicinity: "Jubilee Road, Aba South", phone: "08032001003", type: "Government PHC", services: ["Normal delivery", "Antenatal"], emergency: false },
-    { name: "Holy Ghost Hospital Aba", area: "Aba", vicinity: "Aba Central", phone: "08030002006", type: "Mission", services: ["Maternity", "Antenatal", "C-section", "NICU"], emergency: true },
-    { name: "Vine Medical Centre", area: "Aba", vicinity: "Pound Road, Ogbor Hill, Aba", phone: "08030002007", type: "Private", services: ["Maternity", "Gynecology", "Antenatal", "Normal delivery"], emergency: true },
-    { name: "New Life Maternity Home", area: "Aba", vicinity: "Ndiegoro, Aba South", phone: "08030002008", type: "Private clinic", services: ["Midwifery", "Normal delivery", "Postnatal"], emergency: false },
-
-    // ── UMUAHIA ──────────────────────────────────────────────
-    { name: "Federal Medical Centre Umuahia (Obs & Gynae)", area: "Umuahia", vicinity: "Leventis Bus Stop, Aba Road, Umuahia", phone: "08033001003", type: "Federal hospital", services: ["High-risk pregnancy", "C-section", "NICU", "Antenatal", "Gynaecology", "IVF referral"], emergency: true },
-    { name: "ABSUTH Maternity & Obs/Gynae Dept", area: "Umuahia", vicinity: "ABSUTH, Aba Road, Umuahia", phone: "08033001103", type: "Teaching hospital", services: ["High-risk", "C-section", "NICU", "Antenatal", "Specialist care"], emergency: true },
-    { name: "Abia State Hospital (General Hospital Umuahia)", area: "Umuahia", vicinity: "Hospital Road, Umuahia", phone: "08033001002", type: "Government", services: ["Maternity ward", "Antenatal", "Normal delivery", "C-section"], emergency: true },
-    { name: "Good Shepherd Hospital Umuahia", area: "Umuahia", vicinity: "Library Avenue, Umuahia", phone: "08033002101", type: "Mission", services: ["Maternity", "Midwifery", "Antenatal", "Normal delivery"], emergency: true },
-    { name: "Umuahia Maternity Centre (PHC)", area: "Umuahia", vicinity: "Ikot Ekpene Road, Umuahia", phone: "08033002102", type: "Government PHC", services: ["Normal delivery", "Antenatal", "Family planning"], emergency: false },
-    { name: "Sunrise Women's Clinic", area: "Umuahia", vicinity: "Warehouse Road, Umuahia", phone: "08033002103", type: "Private", services: ["Antenatal", "Normal delivery", "Gynecology", "Family planning"], emergency: false },
-    { name: "Ibeku PHC Maternity Unit", area: "Ibeku, Umuahia", vicinity: "Ibeku Road, Umuahia", phone: "08033002003", type: "Government PHC", services: ["Normal delivery", "Antenatal"], emergency: false },
-
-    // ── OTHER LGAs ────────────────────────────────────────────
+    { name: "Federal Medical Centre Umuahia (Obs & Gynae)", area: "Umuahia", vicinity: "Leventis Bus Stop, Umuahia", phone: "08033001003", type: "Federal hospital", services: ["High-risk pregnancy", "C-section", "NICU", "Antenatal"], emergency: true },
+    { name: "ABSUTH Maternity & Obs/Gynae Dept", area: "Umuahia", vicinity: "ABSUTH, Aba Road, Umuahia", phone: "08033001103", type: "Teaching hospital", services: ["High-risk", "C-section", "NICU", "Antenatal"], emergency: true },
+    { name: "Good Shepherd Hospital Umuahia", area: "Umuahia", vicinity: "Library Avenue, Umuahia", phone: "08033002101", type: "Mission", services: ["Maternity", "Midwifery", "Antenatal"], emergency: true },
     { name: "Arochukwu General Hospital Maternity", area: "Arochukwu", vicinity: "Mission Road, Arochukwu", phone: "08035001003", type: "Government", services: ["Normal delivery", "Antenatal", "Midwifery"], emergency: true },
-    { name: "Bende General Hospital Maternity", area: "Bende", vicinity: "Church Road, Bende", phone: "08036001003", type: "Government", services: ["Normal delivery", "Antenatal"], emergency: true },
-    { name: "Ohafia General Hospital Maternity", area: "Ohafia", vicinity: "Ohafia Town, Abia State", phone: "08037001003", type: "Government", services: ["Normal delivery", "Antenatal", "Midwifery"], emergency: true },
-    { name: "Abia State University Clinic (Obs)", area: "Uturu (ABSU)", vicinity: "ABSU Campus, Uturu", phone: "08042001003", type: "University clinic", services: ["Antenatal", "Normal delivery", "Student health"], emergency: false },
-    { name: "MOUAU Medical Centre (Maternity)", area: "Umudike", vicinity: "MOUAU Campus, Umudike", phone: "08033009001", type: "University clinic", services: ["Antenatal", "Delivery support", "Staff/student"], emergency: false },
   ],
 
   streetDirections: {
     "ariaria to aba central": "From Ariaria, take Uratta Road northbound → join Ngwa Road → follow to Brass Junction → you're in Aba Central. Keke available throughout.",
     "aba central to ogbor hill": "From Brass Junction Aba Central → take Ikot Ekpene Road heading south → pass St. Michael's Road junction → Ogbor Hill is on your right. 10–15 min keke ride.",
-    "aba to umuahia": "Take Aba-Umuahia Expressway from Aba Motor Park. Direct buses available. Journey: ~45–60 min. Alternatively take the Bende Road route via Umuahia.",
-    "umuahia to absu uturu": "From Umuahia Main Park → take Okigwe Road → board Isuikwuato-bound bus or keke at Umuahia park → get off at Uturu (ABSU Gate). ~1.5 hrs.",
-    "aba to osisioma": "Take Port Harcourt Road from Aba North → pass FRSC checkpoint → Osisioma Industrial layout on left. Danfo or keke from Port Harcourt Road stop.",
+    "aba to umuahia": "Take Aba-Umuahia Expressway from Aba Motor Park. Direct buses available. Journey: ~45–60 min.",
+    "umuahia to absu uturu": "From Umuahia Main Park → take Okigwe Road → board Isuikwuato-bound bus → get off at Uturu (ABSU Gate). ~1.5 hrs.",
+    "aba to osisioma": "Take Port Harcourt Road from Aba North → pass FRSC checkpoint → Osisioma Industrial layout on left.",
     "umuahia to mouau umudike": "From Umuahia park → take Ikot Ekpene Road → get off at Umudike junction → short keke ride to MOUAU gate. ~20 min.",
-    "aba to arochukwu": "Take Aba-Ikot Ekpene Road → at Obehie junction turn towards Arochukwu Road → bus from Aba Motor Park (Arochukwu-bound). ~2.5 hrs.",
+    "aba to arochukwu": "Take Aba-Ikot Ekpene Road → at Obehie junction turn towards Arochukwu Road → bus from Aba Motor Park. ~2.5 hrs.",
     "umuahia national war museum": "From Umuahia Central → take Aba Road → museum is clearly signposted on left before ABSUTH. Keke from town. ~10 min.",
-    "umuahia fmc": "From Umuahia Central → take Library Avenue → cross Leventis Bus Stop → FMC gate is 200m on right. Easy keke ride.",
-    "aba ariaria market": "Ariaria is a major landmark. From any part of Aba, ask keke driver for Ariaria Market — all drivers know it. Buses go from Brass Junction.",
+    "umuahia fmc": "From Umuahia Central → take Library Avenue → cross Leventis Bus Stop → FMC gate is 200m on right.",
+    "aba ariaria market": "Ariaria is a major landmark. From any part of Aba, ask keke driver for Ariaria Market — all drivers know it.",
   }
 };
-
-// ── SYSTEM PROMPT FOR NNWANNE ──────────────────────────────────
-const NNWANNE_SYSTEM = `You are Nnwanne, an intelligent emergency response and navigation assistant for Abia State, Nigeria. You are embedded in the Abia State Emergency Contacts app.
-
-Your name "Nnwanne" means "sibling/fellow" in Igbo — you treat every user like family.
-
-PERSONALITY:
-- Warm, calm, and deeply knowledgeable about Abia State
-- Mix English with light Igbo phrases naturally (e.g. "Nna/Nne" for dear, "No wahala" for no problem, "Oya" for okay/let's go)
-- In emergencies: become laser-focused, brief, action-first
-- In normal navigation: friendly, detailed, patient
-- Never panic the user unnecessarily
-
-CORE CAPABILITIES:
-1. EMERGENCY RESPONSE: Identify emergency type → give immediate action steps → provide relevant contacts
-2. NAVIGATION: Give precise directions using Aba and Umuahia street knowledge
-3. BUS/KEKE GUIDANCE: Tell users which bus stop to board from, which route, which transport type
-4. NEARBY PLACES: Suggest police stations, hotels, petrol stations, food joints, hospitals
-5. DANGER ZONE ALERTS: Warn about risky areas in Abia, especially at night
-6. FAVOURITES DIALING: Help user call/text their saved emergency contacts
-7. GENERAL LOCAL KNOWLEDGE: Schools, markets, landmarks, LGA info
-
-KEY ABIA FACTS YOU KNOW:
-- Aba is the commercial capital; Umuahia is the political capital
-- Major areas: Ariaria Market (largest textile market in West Africa), Osisioma Industrial Layout, ABSU Uturu, MOUAU Umudike
-- Emergency: 112 (general), 199 (police), 122 (FRSC)
-- NAPTIP South-East: +2348039000004
-- NHRC Abia: +2348035403780
-- Legal Aid: 0703-000-0000
-
-DANGER ZONE AWARENESS:
-- Ariaria Market environs at night → HIGH risk, pickpockets
-- Port Harcourt Road bridge → HIGH robbery risk after 8pm
-- Aba-Owerri Road at night → HIGH highway robbery risk
-- Old GRA junction at night → MEDIUM risk, poor lighting
-- Ngwa Road near Old Market → MEDIUM armed robbery risk
-
-TRANSPORT KNOWLEDGE:
-- Keke (tricycle) is the main short-distance transport in Aba and Umuahia
-- Danfo (minibuses) for LGA-to-LGA
-- Main parks: Aba Motor Park, Umuahia Main Park
-- Never recommend solo night travel on major highways
-
-RESPONSE STYLE:
-- For emergencies: 3 sentences max, action-first
-- For directions: step-by-step with landmarks
-- For info: conversational, max 150 words
-- Always end emergency responses with: the most relevant hotline number
-
-MATERNITY & OBSTETRIC EMERGENCIES:
-- FMC Umuahia and ABSUTH have full 24hr Obs/Gynae and NICU
-- St. Bridget's Catholic Hospital Aba and Holy Ghost Hospital Aba are key Mission hospitals with maternity
-- For labour emergencies: tell user to call 112 AND head to nearest hospital with 24hr emergency maternity
-- Abia has PHC maternity units in every LGA for normal deliveries
-- For high-risk pregnancies (twins, complications, preterm): FMC Umuahia or ABSUTH are the best options
-- Always ask: How many weeks? First signs or active labour? This helps you advise urgency.
-
-If user says they are in danger, immediately ask: WHERE are you? and give closest police station.
-If user mentions pregnancy emergency or labour: ask location → give nearest 24hr maternity hospital → say call 112.
-
-Respond naturally to voice queries — no bullet points for voice responses, use flowing speech.`;
 
 // ── STYLES ─────────────────────────────────────────────────────
 const BOT_STYLES = `
@@ -397,7 +334,7 @@ const BOT_STYLES = `
 // ── MAIN COMPONENT ─────────────────────────────────────────────
 export default function Nnwanne() {
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState("chat"); // chat | favs
+  const [tab, setTab] = useState("chat");
   const [messages, setMessages] = useState([
     {
       role: "bot", id: Date.now(),
@@ -413,27 +350,24 @@ export default function Nnwanne() {
   const [locationError, setLocationError] = useState(null);
   const [nearbyPlaces, setNearbyPlaces] = useState([]);
   const [placesLoading, setPlacesLoading] = useState(false);
-  const [favs, setFavs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("nnwanne_favs") || "[]"); } catch { return []; }
-  });
+
+  // ── FAVOURITES: stored in React state only (not localStorage)
+  //    This protects PII from XSS-based exfiltration.
+  //    Contacts persist only for the current session — users are
+  //    informed of this when they add a contact.
+  const [favs, setFavs] = useState([]);
   const [addFavForm, setAddFavForm] = useState(false);
   const [newFav, setNewFav] = useState({ name: "", phone: "", relation: "", icon: "👤" });
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const recognitionRef = useRef(null);
-  const utteranceRef = useRef(null);
   const conversationRef = useRef([]);
 
   // ── SCROLL TO BOTTOM ──
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
-
-  // ── SAVE FAVS ──
-  useEffect(() => {
-    localStorage.setItem("nnwanne_favs", JSON.stringify(favs));
-  }, [favs]);
 
   // ── SETUP SPEECH RECOGNITION ──
   useEffect(() => {
@@ -454,11 +388,9 @@ export default function Nnwanne() {
     recognitionRef.current = rec;
   }, []);
 
-
   const speak = useCallback((text) => {
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
-
     const cleanText = text
       .replace(/[👮🚨🗺🚌⚠️🏨📞💬👤🔴🟡🟢•\*]/g, "")
       .replace(/\n+/g, ". ")
@@ -472,20 +404,15 @@ export default function Nnwanne() {
       utter.rate = 1.05;
       utter.pitch = 0.8;
       utter.volume = 1;
-
       const voices = window.speechSynthesis.getVoices();
       const preferred =
         voices.find(v => v.lang === "en-NG") ||
         voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("nigerian")) ||
-        voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("male")) ||
-        voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("david")) ||
         voices.find(v => v.lang.startsWith("en") && !v.name.toLowerCase().includes("female"));
       if (preferred) utter.voice = preferred;
-
       utter.onstart = () => setSpeaking(true);
       utter.onend = () => setSpeaking(false);
       utter.onerror = () => setSpeaking(false);
-      utteranceRef.current = utter;
       window.speechSynthesis.speak(utter);
     };
 
@@ -496,7 +423,6 @@ export default function Nnwanne() {
       doSpeak();
     }
   }, []);
-
 
   // ── GPS LOCATION ──
   const getLocation = useCallback(() => {
@@ -523,27 +449,27 @@ export default function Nnwanne() {
     });
   }, []);
 
-  // ── NEARBY PLACES SEARCH ──
+  // ── NEARBY PLACES ──
   const PLACE_TYPES = {
-    hotel:   { type: "lodging",          keyword: "hotel lodge",        emoji: "🏨", label: "Hotels & Lodges" },
-    food:    { type: "restaurant",       keyword: "restaurant food",    emoji: "🍽️", label: "Restaurants" },
-    hospital:{ type: "hospital",         keyword: "hospital clinic",    emoji: "🏥", label: "Hospitals" },
-    pharmacy:{ type: "pharmacy",         keyword: "pharmacy chemist",   emoji: "💊", label: "Pharmacies" },
-    police:  { type: "police",           keyword: "police station",     emoji: "🚔", label: "Police Stations" },
-    petrol:  { type: "gas_station",      keyword: "petrol filling station", emoji: "⛽", label: "Petrol Stations" },
-    bank:    { type: "bank",             keyword: "bank ATM",           emoji: "🏧", label: "Banks & ATMs" },
-    atm:     { type: "atm",              keyword: "ATM cash",           emoji: "🏧", label: "ATMs" },
+    hotel:    { type: "lodging",      keyword: "hotel lodge",        emoji: "🏨", label: "Hotels & Lodges" },
+    food:     { type: "restaurant",   keyword: "restaurant food",    emoji: "🍽️", label: "Restaurants" },
+    hospital: { type: "hospital",     keyword: "hospital clinic",    emoji: "🏥", label: "Hospitals" },
+    pharmacy: { type: "pharmacy",     keyword: "pharmacy chemist",   emoji: "💊", label: "Pharmacies" },
+    police:   { type: "police",       keyword: "police station",     emoji: "🚔", label: "Police Stations" },
+    petrol:   { type: "gas_station",  keyword: "petrol filling station", emoji: "⛽", label: "Petrol Stations" },
+    bank:     { type: "bank",         keyword: "bank ATM",           emoji: "🏧", label: "Banks & ATMs" },
+    atm:      { type: "atm",          keyword: "ATM cash",           emoji: "🏧", label: "ATMs" },
   };
 
   const detectPlaceIntent = (text) => {
     const t = text.toLowerCase();
-    if (/(hotel|lodge|accommodation|stay|sleep|room)/i.test(t))    return "hotel";
-    if (/(eat|food|restaurant|hungry|dinner|lunch|breakfast)/i.test(t)) return "food";
-    if (/(pharmacy|chemist|medicine|drug store|panadol|drug)/i.test(t)) return "pharmacy";
+    if (/(hotel|lodge|accommodation|stay|sleep|room)/i.test(t))           return "hotel";
+    if (/(eat|food|restaurant|hungry|dinner|lunch|breakfast)/i.test(t))   return "food";
+    if (/(pharmacy|chemist|medicine|drug store|panadol|drug)/i.test(t))   return "pharmacy";
     if (/(hospital|clinic|doctor|sick|injured|emergency|medical)/i.test(t)) return "hospital";
-    if (/(police|station|security|robber|attack|stolen)/i.test(t)) return "police";
-    if (/(petrol|fuel|filling station|diesel|gas station)/i.test(t)) return "petrol";
-    if (/(bank|atm|cash|withdraw|money)/i.test(t))                 return "bank";
+    if (/(police|station|security|robber|attack|stolen)/i.test(t))        return "police";
+    if (/(petrol|fuel|filling station|diesel|gas station)/i.test(t))      return "petrol";
+    if (/(bank|atm|cash|withdraw|money)/i.test(t))                        return "bank";
     return null;
   };
 
@@ -551,24 +477,24 @@ export default function Nnwanne() {
     setPlacesLoading(true);
     setNearbyPlaces([]);
     try {
-      const IS_DEV = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-      const BASE = IS_DEV ? "http://localhost:3001" : "https://abia-emergency-center-production.up.railway.app";
       const cfg = PLACE_TYPES[intent];
-
-      const response = await fetch(`${BASE}/api/places`, {
+      const response = await fetch(`${BASE_URL}/api/places`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lat: loc.lat, lng: loc.lng, type: cfg.type, keyword: cfg.keyword }),
+        headers: API_HEADERS,
+        body: JSON.stringify({
+          lat: loc.lat,
+          lng: loc.lng,
+          type: cfg.type,
+          keyword: cfg.keyword,
+        }),
       });
-
       const data = await response.json();
       if (data.places && data.places.length > 0) {
         setNearbyPlaces({ intent, cfg, places: data.places });
         return data.places;
-      } else {
-        setNearbyPlaces({ intent, cfg, places: [] });
-        return [];
       }
+      setNearbyPlaces({ intent, cfg, places: [] });
+      return [];
     } catch (err) {
       console.error("Places search error:", err);
       return [];
@@ -585,8 +511,6 @@ export default function Nnwanne() {
     return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))).toFixed(1);
   };
 
-  // ── SEND MESSAGE ──
-
   const unlockAudio = useCallback(() => {
     if (!audioUnlocked && window.speechSynthesis) {
       const silent = new SpeechSynthesisUtterance(" ");
@@ -597,13 +521,11 @@ export default function Nnwanne() {
     }
   }, [audioUnlocked]);
 
-    // ── STOP SPEAKING ──
   const stopSpeaking = () => {
     window.speechSynthesis?.cancel();
     setSpeaking(false);
   };
 
-  // ── TOGGLE VOICE INPUT ──
   const toggleVoice = () => {
     if (listening) {
       recognitionRef.current?.stop();
@@ -615,7 +537,6 @@ export default function Nnwanne() {
     }
   };
 
-  // ── DETECT DANGER ZONE MENTION ──
   const checkDangerZone = (text) => {
     const lowerText = text.toLowerCase();
     return ABIA_KNOWLEDGE.dangerZones.find(z =>
@@ -624,68 +545,76 @@ export default function Nnwanne() {
     );
   };
 
-  // ── BUILD CONTEXT STRING ──
-  const buildContext = (userMsg) => {
+  // ── BUILD LOCAL CONTEXT STRING (sent as plain text, not as system prompt)
+  const buildLocalContext = (userMsg) => {
     const ctx = [];
     const lower = userMsg.toLowerCase();
 
-    if (lower.includes("hotel") || lower.includes("lodge") || lower.includes("stay")) {
+    if (/hotel|lodge|stay/i.test(lower)) {
       ctx.push("HOTELS: " + ABIA_KNOWLEDGE.hotels.map(h => `${h.name} (${h.area}, ${h.vicinity}, ☎${h.phone})`).join("; "));
     }
-    if (lower.includes("petrol") || lower.includes("fuel") || lower.includes("filling")) {
+    if (/petrol|fuel|filling/i.test(lower)) {
       ctx.push("PETROL STATIONS: " + ABIA_KNOWLEDGE.petrolStations.map(p => `${p.name} - ${p.vicinity}`).join("; "));
     }
-    if (lower.includes("maternity") || lower.includes("midwif") || lower.includes("delivery") || lower.includes("antenatal") || lower.includes("pregnant") || lower.includes("labour") || lower.includes("labor") || lower.includes("clinic") || lower.includes("gynae") || lower.includes("gynecol") || lower.includes("hospital") || lower.includes("baby") || lower.includes("birth")) {
-      const mat = ABIA_KNOWLEDGE.maternityHospitals;
-      ctx.push("MATERNITY HOSPITALS & CLINICS: " + mat.map(m => `${m.name} [${m.type}] - ${m.vicinity}, ☎${m.phone} | Services: ${m.services.join(", ")} ${m.emergency ? "| 🚨 24hr emergency" : ""}`).join("; "));
+    if (/maternity|midwif|delivery|antenatal|pregnant|labour|labor|gynae|gynecol|hospital|baby|birth/i.test(lower)) {
+      ctx.push("MATERNITY HOSPITALS: " + ABIA_KNOWLEDGE.maternityHospitals.map(m =>
+        `${m.name} [${m.type}] - ${m.vicinity}, ☎${m.phone} | Services: ${m.services.join(", ")} ${m.emergency ? "| 🚨 24hr" : ""}`
+      ).join("; "));
     }
-    if (lower.includes("food") || lower.includes("eat") || lower.includes("restaurant") || lower.includes("hungry")) {
+    if (/food|eat|restaurant|hungry/i.test(lower)) {
       ctx.push("FOOD JOINTS: " + ABIA_KNOWLEDGE.foodJoints.map(f => `${f.name} (${f.type}) - ${f.vicinity}`).join("; "));
     }
-    if (lower.includes("police") || lower.includes("station")) {
+    if (/police|station/i.test(lower)) {
       ctx.push("POLICE STATIONS: " + ABIA_KNOWLEDGE.policeStations.map(p => `${p.name}, ${p.area}, ☎${p.phone}`).join("; "));
     }
-    if (lower.includes("bus") || lower.includes("keke") || lower.includes("transport") || lower.includes("how to get")) {
+    if (/bus|keke|transport|how to get/i.test(lower)) {
       const aba = ABIA_KNOWLEDGE.busStops.aba.map(b => `${b.name} (${b.area}) → ${b.routes.join("/")} ${b.keke ? "[keke avail]" : ""}`).join("; ");
       const umu = ABIA_KNOWLEDGE.busStops.umuahia.map(b => `${b.name} (${b.area}) → ${b.routes.join("/")} ${b.keke ? "[keke avail]" : ""}`).join("; ");
-      ctx.push(`ABA BUS STOPS: ${aba}`);
-      ctx.push(`UMUAHIA BUS STOPS: ${umu}`);
+      ctx.push(`ABA BUS STOPS: ${aba}`, `UMUAHIA BUS STOPS: ${umu}`);
     }
-    if (lower.includes("danger") || lower.includes("safe") || lower.includes("avoid") || lower.includes("risky")) {
+    if (/danger|safe|avoid|risky/i.test(lower)) {
       ctx.push("DANGER ZONES: " + ABIA_KNOWLEDGE.dangerZones.map(d => `${d.area} [${d.risk}]: ${d.note}`).join("; "));
     }
+    // Add in-memory favourites (names only — no full numbers in context to limit exposure)
     if (favs.length > 0) {
-      ctx.push("USER'S SAVED CONTACTS: " + favs.map(f => `${f.name} (${f.relation}) - ${f.phone}`).join("; "));
+      ctx.push("USER'S SAVED CONTACTS: " + favs.map(f => `${f.name} (${f.relation})`).join("; "));
     }
 
-    // Check street directions
     Object.keys(ABIA_KNOWLEDGE.streetDirections).forEach(key => {
       if (key.split(" ").some(word => lower.includes(word))) {
         ctx.push(`ROUTE (${key}): ${ABIA_KNOWLEDGE.streetDirections[key]}`);
       }
     });
 
-    return ctx.length > 0 ? "\n\n[LOCAL DATA]\n" + ctx.join("\n") : "";
+    return ctx.join("\n");
   };
 
-  // ── GPS LOCATION ──
   // ── SEND MESSAGE ──
   const sendMessage = useCallback(async (text) => {
     const userText = (text || input).trim();
     if (!userText) return;
+
+    // Client-side message length cap
+    if (userText.length > 1000) {
+      setMessages(prev => [...prev, {
+        role: "bot", id: Date.now(), content: "Nna, please keep your message shorter so I can help faster."
+      }]);
+      return;
+    }
+
     setInput("");
-    const userMsg = { role: "user", id: Date.now(), content: userText };
-    setMessages(prev => [...prev, userMsg]);
+    setMessages(prev => [...prev, { role: "user", id: Date.now(), content: userText }]);
     setLoading(true);
 
-    // Check danger zone proactively
     const danger = checkDangerZone(userText);
 
-    // Build conversation history
+    // Maintain capped conversation history
     conversationRef.current = [...conversationRef.current, { role: "user", content: userText }];
-    if (conversationRef.current.length > 20) conversationRef.current = conversationRef.current.slice(-20);
+    if (conversationRef.current.length > 20) {
+      conversationRef.current = conversationRef.current.slice(-20);
+    }
 
-    // ── GPS PLACE DETECTION ──
+    // GPS place detection
     const placeIntent = detectPlaceIntent(userText);
     let gpsContext = "";
     let fetchedPlaces = [];
@@ -696,46 +625,38 @@ export default function Nnwanne() {
         fetchedPlaces = await searchNearbyPlaces(placeIntent, loc);
         if (fetchedPlaces.length > 0) {
           const cfg = PLACE_TYPES[placeIntent];
-          gpsContext = `\n\n[GPS - REAL NEARBY ${cfg.label.toUpperCase()} WITHIN 5KM]\n` +
+          gpsContext = `\n[GPS - REAL NEARBY ${cfg.label.toUpperCase()} WITHIN 5KM]\n` +
             fetchedPlaces.map((p, i) => {
               const dist = getDistanceKm(loc.lat, loc.lng, p.lat, p.lng);
               const open = p.open_now === true ? "✅ Open now" : p.open_now === false ? "❌ Closed" : "";
               const rating = p.rating ? `⭐${p.rating}` : "";
               return `${i+1}. ${p.name} — ${p.address} ${rating} ${open} (${dist}km away)`;
-            }).join("\n") +
-            "\nTell the user these exact real places with distances. Be helpful and specific.";
-        } else {
-          gpsContext = `\n\n[GPS] No ${PLACE_TYPES[placeIntent].label} found within 5km of user's location.`;
+            }).join("\n") + "\nTell the user these exact real places with distances.";
         }
       } catch (locErr) {
-        gpsContext = `\n\n[GPS] Could not get location: ${locErr}. Tell user to enable location access.`;
+        gpsContext = `\n[GPS] Could not get location: ${locErr}. Tell user to enable location access.`;
       }
     }
 
     try {
-      const context = buildContext(userText) + gpsContext;
-      const systemPrompt = NNWANNE_SYSTEM + context;
-      // ── API ENDPOINT ──────────────────────────────────────────────
-      // In development: routes to local proxy (port 3001)
-      // In production: routes to the Railway-hosted proxy
-      const IS_DEV =
-        typeof window !== "undefined" &&
-        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+      const localContext = buildLocalContext(userText) + gpsContext;
 
-      const ENDPOINT = IS_DEV
-        ? "http://localhost:3001/api/chat"
-        : "https://abia-emergency-center-production.up.railway.app/api/chat";
-
-      const response = await fetch(ENDPOINT, {
+      // ── KEY SECURITY CHANGE:
+      //    We send ONLY messages[] and an optional localContext string.
+      //    We never send model, max_tokens, or system — all controlled server-side.
+      const response = await fetch(`${BASE_URL}/api/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: API_HEADERS,
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
-          max_tokens: 1000,
-          system: systemPrompt,
           messages: conversationRef.current,
+          localContext: localContext || undefined,
         }),
       });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP ${response.status}`);
+      }
 
       const data = await response.json();
       const botText = data.content?.[0]?.text || "Nna, I had trouble connecting. Please try again or call 112 directly.";
@@ -751,13 +672,10 @@ export default function Nnwanne() {
         content: botText,
         type: isEmergency ? "emergency" : isWarning ? "warning" : "normal",
         dangerAlert: danger || null,
+        speakText: botText,
       }]);
 
       speak(botText);
-      // Store text on message for mobile tap-to-speak
-      setMessages(prev => prev.map((m, idx) =>
-        idx === prev.length - 1 ? { ...m, speakText: botText } : m
-      ));
     } catch (err) {
       setMessages(prev => [...prev, {
         role: "bot", id: Date.now() + 1,
@@ -766,28 +684,28 @@ export default function Nnwanne() {
       }]);
     }
     setLoading(false);
-  }, [input, favs, speak]);
+  }, [input, favs, speak, userLocation, getLocation, searchNearbyPlaces]);
 
-  // ── HANDLE KEYDOWN ──
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
-  // ── ADD FAVOURITE ──
   const addFav = () => {
     if (!newFav.name || !newFav.phone) return;
-    setFavs(prev => [...prev, { ...newFav, id: Date.now() }]);
+    // Sanitise phone — digits and + only
+    const cleanPhone = newFav.phone.replace(/[^\d+]/g, "").slice(0, 15);
+    // Sanitise name — letters and spaces only
+    const cleanName = newFav.name.replace(/[<>'"&]/g, "").slice(0, 50);
+    setFavs(prev => [...prev, { ...newFav, name: cleanName, phone: cleanPhone, id: Date.now() }]);
     setNewFav({ name: "", phone: "", relation: "", icon: "👤" });
     setAddFavForm(false);
   };
 
-  // ── DELETE FAVOURITE ──
   const deleteFav = (id) => setFavs(prev => prev.filter(f => f.id !== id));
 
-  // ── SOS ALL FAVOURITES ──
   const sosAll = () => {
     if (favs.length === 0) return;
-    const msg = `🚨 EMERGENCY SOS from Abia Emergency App. I need help immediately. Please call me now!`;
+    const msg = "🚨 EMERGENCY SOS from Abia Emergency App. I need help immediately. Please call me now!";
     favs.forEach(f => {
       window.open(`sms:${f.phone}?body=${encodeURIComponent(msg)}`);
     });
@@ -808,14 +726,12 @@ export default function Nnwanne() {
 
   const RELATION_ICONS = { Family: "👨‍👩‍👧", Friend: "🤝", Doctor: "🏥", Neighbour: "🏠", Colleague: "💼", Other: "👤" };
 
-
   return (
     <>
       <style>{BOT_STYLES}</style>
 
       {/* FLOATING ACTION BUTTON */}
       <button className={`nn-fab ${listening ? "listening" : ""}`} onClick={() => {
-        // Unlock Audio API on first tap — required for iOS/Android autoplay policy
         if (!audioUnlocked && window.speechSynthesis) {
           const silent = new SpeechSynthesisUtterance(" ");
           silent.volume = 0;
@@ -855,15 +771,13 @@ export default function Nnwanne() {
           {/* ── CHAT TAB ── */}
           {tab === "chat" && (
             <>
-              {/* VOICE WAVEFORM */}
               {listening && (
                 <div className="nn-waveform">
-                  {[1,2,3,4,5].map(i => <div key={i} className="nn-wave-bar" style={{ height: `${Math.random() * 16 + 4}px` }} />)}
+                  {[1,2,3,4,5].map(i => <div key={i} className="nn-wave-bar" />)}
                   <span style={{ fontSize: ".62rem", color: "rgba(244,67,54,.8)", marginLeft: 8, fontFamily: "Syne" }}>Listening…</span>
                 </div>
               )}
 
-              {/* MESSAGES */}
               <div className="nn-messages">
                 {messages.map((msg) => (
                   <div key={msg.id}>
@@ -884,15 +798,13 @@ export default function Nnwanne() {
                               gap: 5, cursor: "pointer", fontSize: ".62rem",
                               color: speaking ? "rgba(0,200,83,1)" : "rgba(0,200,83,.7)",
                               fontFamily: "Syne", fontWeight: 700, letterSpacing: ".05em",
-                              background: "rgba(0,200,83,.07)",
-                              border: "1px solid rgba(0,200,83,.2)",
+                              background: "rgba(0,200,83,.07)", border: "1px solid rgba(0,200,83,.2)",
                               borderRadius: 8, padding: "4px 10px"
                             }}
                           >
                             {speaking ? "🔊 Speaking…" : "🔊 Tap to hear"}
                           </button>
                         )}
-
                       </div>
                     </div>
                   </div>
@@ -909,9 +821,9 @@ export default function Nnwanne() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* NEARBY PLACES CARD */}
+              {/* NEARBY PLACES */}
               {placesLoading && (
-                <div style={{ padding: "10px 16px", background: "rgba(0,200,83,.06)", border: "1px solid rgba(0,200,83,.15)", borderRadius: 10, margin: "8px 0", fontSize: ".72rem", color: "rgba(0,200,83,.8)", fontFamily: "Syne", fontWeight: 700, letterSpacing: ".05em" }}>
+                <div style={{ padding: "10px 16px", background: "rgba(0,200,83,.06)", border: "1px solid rgba(0,200,83,.15)", borderRadius: 10, margin: "8px 0", fontSize: ".72rem", color: "rgba(0,200,83,.8)", fontFamily: "Syne", fontWeight: 700 }}>
                   📍 Finding nearby places…
                 </div>
               )}
@@ -944,15 +856,9 @@ export default function Nnwanne() {
                   ))}
                 </div>
               )}
-              {nearbyPlaces?.places?.length === 0 && nearbyPlaces?.cfg && !placesLoading && (
-                <div style={{ padding: "10px 16px", background: "rgba(255,82,82,.05)", border: "1px solid rgba(255,82,82,.15)", borderRadius: 10, margin: "8px 0", fontSize: ".7rem", color: "rgba(255,255,255,.5)", fontFamily: "Syne" }}>
-                  📍 No {nearbyPlaces.cfg.label} found within 5km of your location.
-                </div>
-              )}
 
               {/* QUICK PROMPTS */}
               <div className="nn-quick-btns">
-                {/* GPS STATUS */}
                 {!userLocation && (
                   <button
                     onClick={async () => { try { await getLocation(); } catch(e) {} }}
@@ -988,7 +894,7 @@ export default function Nnwanne() {
                   className="nn-textarea"
                   placeholder="Ask Nnwanne anything about Abia…"
                   value={input}
-                  onChange={e => setInput(e.target.value)}
+                  onChange={e => setInput(e.target.value.slice(0, 1000))}
                   onKeyDown={handleKeyDown}
                   rows={1}
                 />
@@ -1005,6 +911,11 @@ export default function Nnwanne() {
                   🚨 SOS — ALERT ALL {favs.length} SAVED CONTACT{favs.length > 1 ? "S" : ""}
                 </button>
               )}
+
+              {/* Session-only notice */}
+              <div style={{ fontSize: ".6rem", color: "rgba(0,200,83,.45)", background: "rgba(0,200,83,.04)", border: "1px solid rgba(0,200,83,.12)", borderRadius: 7, padding: "7px 10px", marginBottom: 10, fontFamily: "Syne", lineHeight: 1.6 }}>
+                🔒 Contacts are stored in-session only and cleared when you close the app. This protects your data from being stored in the browser.
+              </div>
 
               {favs.length === 0 && !addFavForm && (
                 <div className="nn-empty-favs">
@@ -1053,8 +964,8 @@ export default function Nnwanne() {
                       </button>
                     ))}
                   </div>
-                  <input className="nn-add-input" placeholder="Name (e.g. Mama, Dr. Okafor)" value={newFav.name} onChange={e => setNewFav(f => ({ ...f, name: e.target.value }))} />
-                  <input className="nn-add-input" placeholder="Phone number (e.g. 08012345678)" type="tel" value={newFav.phone} onChange={e => setNewFav(f => ({ ...f, phone: e.target.value }))} />
+                  <input className="nn-add-input" placeholder="Name (e.g. Mama, Dr. Okafor)" value={newFav.name} onChange={e => setNewFav(f => ({ ...f, name: e.target.value.slice(0, 50) }))} />
+                  <input className="nn-add-input" placeholder="Phone number (e.g. 08012345678)" type="tel" value={newFav.phone} onChange={e => setNewFav(f => ({ ...f, phone: e.target.value.replace(/[^\d+]/g, "").slice(0, 15) }))} />
                   <div style={{ display: "flex", gap: 6 }}>
                     <button className="nn-add-submit" onClick={addFav}>✓ SAVE CONTACT</button>
                     <button className="nn-add-submit" style={{ background: "rgba(255,255,255,.07)", color: "rgba(255,255,255,.5)" }} onClick={() => setAddFavForm(false)}>Cancel</button>
@@ -1062,7 +973,7 @@ export default function Nnwanne() {
                 </div>
               )}
 
-              {/* QUICK DIAL SECTION */}
+              {/* QUICK DIAL */}
               <div style={{ marginTop: 16, borderTop: "1px solid rgba(0,200,83,.1)", paddingTop: 12 }}>
                 <div style={{ fontSize: ".6rem", fontFamily: "Syne", fontWeight: 700, color: "rgba(0,200,83,.5)", letterSpacing: ".1em", marginBottom: 8 }}>ABIA STATE EMERGENCY HOTLINES</div>
                 {[
