@@ -5,6 +5,11 @@ const cors = require("cors");
 
 const app = express();
 
+// Railway (and most cloud platforms) sit behind a reverse proxy.
+// This tells Express to trust the X-Forwarded-For header so
+// express-rate-limit can identify real client IPs correctly.
+app.set("trust proxy", 1);
+
 // ═══════════════════════════════════════════════════════════════
 //  ENVIRONMENT VALIDATION
 //  Hard-required: GROQ_API_KEY (core feature, nothing works without it)
